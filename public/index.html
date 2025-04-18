@@ -1,0 +1,107 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Prompt Game</title>
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+  <body>
+    <h1>Prompt Game</h1>
+    <div id="lobby">
+      <input id="name" placeholder="Your Name" />
+      <button onclick="createLobby()">Create Lobby</button>
+      <input id="joinCode" placeholder="Lobby Code" />
+      <button onclick="joinLobby()">Join Lobby</button>
+      <div id="playerList"></div>
+      <button onclick="startGame()">Start Game</button>
+    </div>
+
+    <script>
+      const socket = io();
+      let lobbyCode = "";
+
+      function createLobby() {
+        const name = document.getElementById("name").value;
+        socket.emit("create-lobby", name, (res) => {
+          lobbyCode = res.lobbyCode;
+          updatePlayerList(res.players);
+        });
+      }
+
+      function joinLobby() {
+        const name = document.getElementById("name").value;
+        const code = document.getElementById("joinCode").value.toUpperCase();
+        socket.emit("join-lobby", code, name, (res) => {
+          if (res.success) {
+            lobbyCode = code;
+            updatePlayerList(res.players);
+          } else {
+            alert(res.error);
+          }
+        });
+      }
+
+      function updatePlayerList(players) {
+        const listDiv = document.getElementById("playerList");
+        listDiv.innerHTML =
+          `<p>Lobby: ${lobbyCode}</p><ul>` +
+          Object.values(players)
+            .map((p) => `<li>${p}</li>`)
+            .join("") +
+          `</ul>`;
+      }
+
+      function startGame() {
+        socket.emit("start-game", lobbyCode);
+      }
+
+      socket.on("player-list", updatePlayerList);
+
+      socket.on("game-started", () => {
+        alert("Game started!");
+      });
+      function spinWheel() {
+        socket.emit("spin-wheel", lobbyCode);
+      }
+      socket.on("prompt-chosen", ({ text, type }) => {
+        document.getElementById("promptDisplay").innerHTML =
+          `<h2>${text}</h2><p>Answer style: <strong>${type}</strong></p>`;
+        if (type === "emoji")
+          document.getElementById("promptDisplay").innerHTML +=
+            `<p>Use only emojis to describe your ideal vacation.</p>`;
+        else
+          document.getElementById("promptDisplay").innerHTML +=
+            `<p>Answer in this text box.</p>`;
+        document.getElementById("promptDisplay").innerHTML +=
+          `<textarea id="answer" placeholder="Your answer here"></textarea>`;
+        document.getElementById("promptDisplay").innerHTML +=
+          `<button onclick="submitAnswer()">Submit</button>`;
+        document.getElementById("promptDisplay").innerHTML +=
+          `<div id="answerDisplay"></div>`;
+      });
+
+      socket.on("answer-submitted", (answer) => {
+        document.getElementById("answerDisplay").innerHTML = `<p>${answer}</p>`;
+      });
+      // function submitAnswer() {
+      //   const answer = document.getElementById("answer").value;
+      // }
+      // socket.emit("submit-answer", lobbyCode, answer);
+      // socket.on(
+      //   "answer-submitted",
+      //   (answer) =>
+      //     (document.getElementById("answerDisplay").innerHTML =
+      //       `<p>${answer}</p>`),
+      // );
+      // socket.on(
+      //   "answer-submitted",
+      //   (answer) =>
+      //     (document.getElementById("answerDisplay").innerHTML =
+      //       `<p>${answer}</p>`),
+      // );
+    </script>
+  </body>
+  <button onclick="spinWheel()">Spin for Prompt</button>
+  <button onclick="submitAnswer()">Submit Answer</button>
+  <div id="answerDisplay"></div>
+  <div id="promptDisplay"></div>
+</html>
