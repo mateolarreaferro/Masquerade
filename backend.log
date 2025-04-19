@@ -1,0 +1,6 @@
+
+> backend@1.0.0 start
+> node server.js
+
+Server running on port 3001
+Loaded 48 prompts and 22 answer styles

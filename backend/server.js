@@ -72,7 +72,8 @@ io.on('connection', (socket) => {
         const player = {
             id: socket.id,
             name: username,
-            isHost: true
+            isHost: true,
+            score: 0 // Add score for tracking points
         };
         
         // Store lobby data
@@ -83,7 +84,10 @@ io.on('connection', (socket) => {
             currentPrompt: null,
             currentAnswerStyle: null,
             roundAnswers: new Map(),
-            roundComplete: false
+            roundComplete: false,
+            inVotingPhase: false, // Track if we're in the voting phase
+            votes: new Map(),     // Store player votes
+            playerScores: new Map() // Track player scores
         });
         
         // Join the socket to the lobby room
@@ -112,7 +116,8 @@ io.on('connection', (socket) => {
         const player = {
             id: socket.id,
             name: username,
-            isHost: false
+            isHost: false,
+            score: 0 // Add score for tracking points
         };
         
         // Add player to lobby
@@ -184,6 +189,7 @@ io.on('connection', (socket) => {
             // Check if all players have submitted answers
             if (lobby.roundAnswers.size === lobby.players.length) {
                 lobby.roundComplete = true;
+                lobby.inVotingPhase = true;
                 
                 // Convert Map to Array for easy handling in frontend
                 const answers = Array.from(lobby.roundAnswers.values());
@@ -191,8 +197,15 @@ io.on('connection', (socket) => {
                 // Randomize the order of answers before sending to clients
                 const shuffledAnswers = shuffleArray(answers);
                 
-                io.to(lobbyCode).emit('allAnswersSubmitted', { 
-                    answers: shuffledAnswers
+                // Only send the answers without playerNames
+                const answersForVoting = shuffledAnswers.map(answer => ({
+                    answerId: answer.playerId,  // Keep the ID for reference but don't display
+                    answer: answer.answer
+                }));
+                
+                io.to(lobbyCode).emit('startVotingPhase', { 
+                    answers: answersForVoting,
+                    players: lobby.players.map(p => ({ id: p.id, name: p.name }))
                 });
             } else {
                 // Notify all players about progress
@@ -201,6 +214,60 @@ io.on('connection', (socket) => {
                     total: lobby.players.length
                 });
             }
+        }
+    });
+    
+    // Handle player votes
+    socket.on('submitVotes', ({ votes }) => {
+        const lobbyCode = socket.lobbyCode;
+        if (!lobbyCode) return;
+        
+        const lobby = lobbies.get(lobbyCode);
+        if (!lobby || !lobby.inVotingPhase) return;
+        
+        // Store player's votes
+        lobby.votes.set(socket.id, votes);
+        
+        // Check if all players have voted
+        if (lobby.votes.size === lobby.players.length) {
+            // Calculate scores
+            const playerScores = calculateScores(lobby.roundAnswers, lobby.votes, lobby.players);
+            
+            // Update each player's score
+            playerScores.forEach((score, playerId) => {
+                const player = lobby.players.find(p => p.id === playerId);
+                if (player) {
+                    if (!lobby.playerScores.has(playerId)) {
+                        lobby.playerScores.set(playerId, 0);
+                    }
+                    const currentScore = lobby.playerScores.get(playerId);
+                    lobby.playerScores.set(playerId, currentScore + score);
+                    player.score = currentScore + score;
+                }
+            });
+            
+            // Reveal results to all players
+            const revealedAnswers = Array.from(lobby.roundAnswers.values());
+            
+            io.to(lobbyCode).emit('revealResults', { 
+                answers: revealedAnswers,
+                scores: lobby.players.map(p => ({ 
+                    id: p.id, 
+                    name: p.name, 
+                    score: p.score 
+                })),
+                votingResults: Array.from(lobby.votes)
+            });
+            
+            // Reset voting phase
+            lobby.inVotingPhase = false;
+            lobby.votes = new Map();
+        } else {
+            // Update voting progress
+            io.to(lobbyCode).emit('votingProgress', {
+                submitted: lobby.votes.size,
+                total: lobby.players.length
+            });
         }
     });
 
@@ -217,6 +284,7 @@ io.on('connection', (socket) => {
         lobby.currentAnswerStyle = answerStyles[Math.floor(Math.random() * answerStyles.length)];
         lobby.roundAnswers = new Map();
         lobby.roundComplete = false;
+        lobby.inVotingPhase = false;
         
         io.to(lobbyCode).emit('newRound', {
             prompt: lobby.currentPrompt,
@@ -305,10 +373,41 @@ function shuffleArray(array) {
 function generateLobbyCode() {
     const characters = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed similar looking characters
     let result = '';
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 4; i++) { // Changed from 6 to 4
         result += characters.charAt(Math.floor(Math.random() * characters.length));
     }
     return result;
+}
+
+// Calculate scores based on voting results
+function calculateScores(roundAnswers, votes, players) {
+    const scores = new Map();
+    
+    // Initialize scores
+    players.forEach(player => {
+        scores.set(player.id, 0);
+    });
+    
+    // Award points for correct guesses
+    votes.forEach((playerVotes, voterId) => {
+        // Go through each of this player's votes
+        playerVotes.forEach(vote => {
+            const { answerId, guessedPlayerId } = vote;
+            
+            // Don't allow voting for your own answer
+            if (answerId === voterId) return;
+            
+            // If the guess is correct, award a point
+            const answerData = roundAnswers.get(answerId);
+            if (answerData && guessedPlayerId === answerId) {
+                const currentScore = scores.get(voterId) || 0;
+                scores.set(voterId, currentScore + 1);
+                console.log(`Player ${voterId} awarded 1 point for correct guess on ${answerId}'s answer`);
+            }
+        });
+    });
+    
+    return scores;
 }
 
 const PORT = process.env.PORT || 3001;

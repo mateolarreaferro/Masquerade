@@ -12,7 +12,7 @@ interface Player {
   id: string;
   name: string;
   isHost: boolean;
-  // Add other properties as needed
+  score?: number; // Add score for tracking points
 }
 
 // Define answer interface
@@ -20,6 +20,18 @@ interface Answer {
   playerId: string;
   playerName: string;
   answer: string;
+}
+
+// Define answer for voting interface
+interface AnswerForVoting {
+  answerId: string; // ID of the player who submitted this answer
+  answer: string;
+}
+
+// Define vote interface
+interface Vote {
+  answerId: string; // ID of the answer being voted on
+  guessedPlayerId: string; // ID of the player who is guessed to have written this
 }
 
 // Create a singleton socket instance to be reused across renders
@@ -43,6 +55,21 @@ function LobbyContent() {
     const [allAnswers, setAllAnswers] = useState<Answer[]>([]);
     const [answersSubmitted, setAnswersSubmitted] = useState(0);
     const [totalAnswersNeeded, setTotalAnswersNeeded] = useState(0);
+    
+    // New state for voting phase
+    const [isVotingPhase, setIsVotingPhase] = useState(false);
+    const [answersForVoting, setAnswersForVoting] = useState<AnswerForVoting[]>([]);
+    const [userVotes, setUserVotes] = useState<Vote[]>([]);
+    const [hasSubmittedVotes, setHasSubmittedVotes] = useState(false);
+    const [votesSubmitted, setVotesSubmitted] = useState(0);
+    const [totalVotesNeeded, setTotalVotesNeeded] = useState(0);
+    const [isResultsPhase, setIsResultsPhase] = useState(false);
+    const [results, setResults] = useState<{
+        answers: Answer[],
+        scores: {id: string, name: string, score: number}[],
+        votingResults: [string, Vote[]][]
+    } | null>(null);
+    
     const [showAnswers, setShowAnswers] = useState(false);
     const [isConnected, setIsConnected] = useState(false);
     
@@ -153,7 +180,50 @@ function LobbyContent() {
             setAllAnswers([]);
             setShowAnswers(false);
         });
-        
+
+        // New event listeners for voting phase
+        socket.on('startVotingPhase', ({ answers, players }) => {
+            console.log('Voting phase started with answers:', answers);
+            setIsVotingPhase(true);
+            setAnswersForVoting(answers);
+            setUserVotes([]);
+            setHasSubmittedVotes(false);
+            setVotesSubmitted(0);
+            setTotalVotesNeeded(players.length);
+            setShowAnswers(false);
+        });
+
+        socket.on('votingProgress', ({ submitted, total }) => {
+            console.log('Vote progress:', submitted, '/', total);
+            setVotesSubmitted(submitted);
+            setTotalVotesNeeded(total);
+        });
+
+        socket.on('revealResults', ({ answers, scores, votingResults }) => {
+            console.log('Results revealed:', answers, scores, votingResults);
+            setIsResultsPhase(true);
+            setIsVotingPhase(false);
+            setAllAnswers(answers);
+            setResults({
+                answers,
+                scores,
+                votingResults
+            });
+            
+            // Update player scores in the players array too
+            setPlayers(prevPlayers => {
+                return prevPlayers.map(player => {
+                    const scoreInfo = scores.find(s => s.id === player.id);
+                    if (scoreInfo) {
+                        return { ...player, score: scoreInfo.score };
+                    }
+                    return player;
+                });
+            });
+            
+            setShowAnswers(true);
+        });
+
         // Make sure we're connected
         if (!socket.connected) {
             console.log('Socket not connected, connecting now...');
@@ -175,6 +245,9 @@ function LobbyContent() {
             socket.off('answerProgress');
             socket.off('allAnswersSubmitted');
             socket.off('newRound');
+            socket.off('startVotingPhase');
+            socket.off('votingProgress');
+            socket.off('revealResults');
             // We're not disconnecting the socket here to allow persistence between page navigations
         };
     }, []);
@@ -195,6 +268,14 @@ function LobbyContent() {
             setAllAnswers([]);
             setAnswersSubmitted(0);
             setTotalAnswersNeeded(0);
+            setIsVotingPhase(false);
+            setAnswersForVoting([]);
+            setUserVotes([]);
+            setHasSubmittedVotes(false);
+            setVotesSubmitted(0);
+            setTotalVotesNeeded(0);
+            setIsResultsPhase(false);
+            setResults(null);
         };
     }, []);
 
@@ -284,6 +365,32 @@ function LobbyContent() {
         }
     };
 
+    // Interface for the data sent when submitting votes
+    interface SubmitVotesPayload {
+        votes: Vote[];
+    }
+
+    const handleSubmitVotes = (e: React.FormEvent<HTMLFormElement>) => {
+        e.preventDefault();
+        
+        // Get all answers except the player's own
+        const otherAnswers = answersForVoting.filter(answer => answer.answerId !== currentPlayer?.id);
+        
+        // Check if votes are complete
+        if (userVotes.length !== otherAnswers.length) {
+            setError('Please select a player for each answer');
+            return;
+        }
+        
+        if (socketRef.current && socketRef.current.connected) {
+            socketRef.current.emit('submitVotes', { votes: userVotes });
+            setHasSubmittedVotes(true); // Mark votes as submitted immediately
+            setError(''); // Clear any error
+        } else {
+            setError('Not connected to game server');
+        }
+    };
+
     const isHost = currentPlayer?.isHost;
 
     // Game interface shown after game has started
@@ -294,7 +401,7 @@ function LobbyContent() {
                     <div className="flex justify-between items-center max-w-7xl mx-auto">
                         <Link href="/" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium hover:underline flex items-center transition">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                                <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                                <path fillRule="evenodd" d="M9.707 14.707a1 1 01-1.414 0l-4-4a1 1 010-1.414l4-4a1 1 011.414 1.414L7.414 9H15a1 1 110 2H7.414l2.293 2.293a1 1 010 1.414z" clipRule="evenodd" />
                             </svg>
                             Leave Game
                         </Link>
@@ -323,7 +430,7 @@ function LobbyContent() {
                             </div>
 
                             {/* Answer Submission Form */}
-                            {!hasSubmittedAnswer && !showAnswers ? (
+                            {!hasSubmittedAnswer && !showAnswers && !isVotingPhase ? (
                                 <form onSubmit={handleSubmitAnswer} className="mb-8">
                                     <div className="mb-4">
                                         <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300" htmlFor="userAnswer">
@@ -351,16 +458,16 @@ function LobbyContent() {
                                         className="w-full py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 flex items-center justify-center"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                                            <path fillRule="evenodd" d="M16.707 5.293a1 1 010 1.414l-8 8a1 1 01-1.414 0l-4-4a1 1 011.414-1.414L7.414 9H15a1 1 110 2H7.414l2.293 2.293a1 1 010 1.414z" clipRule="evenodd" />
                                         </svg>
                                         Submit Answer
                                     </button>
                                 </form>
-                            ) : !showAnswers ? (
+                            ) : !showAnswers && !isVotingPhase ? (
                                 <div className="mb-8">
                                     <div className="p-5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg shadow-inner border border-green-100 dark:border-green-800 mb-6 text-center">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-green-500 dark:text-green-400 mb-2" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 000 16zm3.707-9.293a1 1 00-1.414-1.414L9 10.586 7.707 9.293a1 1 00-1.414 1.414l2 2a1 1 001.414 0l4-4z" clipRule="evenodd" />
                                         </svg>
                                         <p className="text-xl font-medium text-green-800 dark:text-green-200">Your answer has been submitted!</p>
                                     </div>
@@ -378,19 +485,179 @@ function LobbyContent() {
                                         </p>
                                     </div>
                                 </div>
+                            ) : isVotingPhase ? (
+                                <div className="mb-8">
+                                    <h2 className="text-2xl font-bold mb-4 text-center text-slate-800 dark:text-slate-200">Voting Phase</h2>
+                                    <p className="text-center mb-6 text-slate-600 dark:text-slate-300">Guess who wrote each answer!</p>
+                                    
+                                    {!hasSubmittedVotes ? (
+                                        <form onSubmit={handleSubmitVotes}>
+                                            <ul className="space-y-4 mb-6">
+                                                {answersForVoting
+                                                  .filter(answer => answer.answerId !== currentPlayer?.id) // Filter out player's own answer
+                                                  .map((answer, index) => (
+                                                    <li key={index} className="p-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-800 dark:to-slate-700 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600">
+                                                        <p className="font-medium text-slate-800 dark:text-slate-200 mb-3">{answer.answer}</p>
+                                                        
+                                                        <div className="mt-2">
+                                                            <label className="text-sm font-medium text-slate-600 dark:text-slate-300">Who wrote this?</label>
+                                                            <select 
+                                                                className="w-full mt-1 p-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-2 focus:ring-indigo-500"
+                                                                onChange={(e) => {
+                                                                    const newVotes = [...userVotes];
+                                                                    // Remove any existing vote for this answer
+                                                                    const existingVoteIndex = newVotes.findIndex(v => v.answerId === answer.answerId);
+                                                                    if (existingVoteIndex !== -1) {
+                                                                        newVotes.splice(existingVoteIndex, 1);
+                                                                    }
+                                                                    
+                                                                    // Add the new vote if a player was selected
+                                                                    if (e.target.value) {
+                                                                        newVotes.push({
+                                                                            answerId: answer.answerId,
+                                                                            guessedPlayerId: e.target.value
+                                                                        });
+                                                                    }
+                                                                    
+                                                                    setUserVotes(newVotes);
+                                                                }}
+                                                                required
+                                                            >
+                                                                <option value="">Select a player</option>
+                                                                {players.filter(p => p.id !== currentPlayer?.id).map((player) => (
+                                                                    <option key={player.id} value={player.id}>{player.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                            
+                                            {error && (
+                                                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-lg">
+                                                    {error}
+                                                </div>
+                                            )}
+                                            
+                                            <button
+                                                type="submit"
+                                                className="w-full py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 flex items-center justify-center"
+                                                disabled={userVotes.length !== answersForVoting.filter(a => a.answerId !== currentPlayer?.id).length} // Only count other players' answers
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 010 1.414l-8 8a1 1 01-1.414 0l-4-4a1 1 011.414-1.414L7.414 9H15a1 1 110 2H7.414l2.293 2.293a1 1 010 1.414z" clipRule="evenodd" />
+                                                </svg>
+                                                Submit Votes ({userVotes.length}/{answersForVoting.filter(a => a.answerId !== currentPlayer?.id).length})
+                                            </button>
+                                        </form>
+                                    ) : (
+                                        <div>
+                                            <div className="p-5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg shadow-inner border border-green-100 dark:border-green-800 mb-6 text-center">
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-green-500 dark:text-green-400 mb-2" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 000 16zm3.707-9.293a1 1 00-1.414-1.414L9 10.586 7.707 9.293a1 1 00-1.414 1.414l2 2a1 1 001.414 0l4-4z" clipRule="evenodd" />
+                                                </svg>
+                                                <p className="text-xl font-medium text-green-800 dark:text-green-200">Your votes have been submitted!</p>
+                                            </div>
+                                            
+                                            <div className="text-center">
+                                                <p className="text-slate-600 dark:text-slate-300 mb-3 font-medium">Waiting for other players to vote...</p>
+                                                <div className="h-3 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden shadow-inner">
+                                                    <div 
+                                                        className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500 ease-in-out" 
+                                                        style={{ width: `${(votesSubmitted / totalVotesNeeded) * 100}%` }}
+                                                    ></div>
+                                                </div>
+                                                <p className="text-sm mt-2 text-slate-500 dark:text-slate-400">
+                                                    {votesSubmitted} of {totalVotesNeeded} votes received
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             ) : (
                                 <div className="mb-8">
-                                    <h2 className="text-2xl font-bold mb-5 text-center text-slate-800 dark:text-slate-200">All Answers:</h2>
-                                    <ul className="space-y-3 max-h-[40vh] overflow-y-auto pr-1 fancy-scrollbar">
-                                        {allAnswers.map((answer, index) => (
-                                            <li 
-                                                key={index} 
-                                                className="p-4 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-800 dark:to-slate-700 rounded-lg shadow-sm border border-slate-200 dark:border-slate-600 hover:shadow-md transition"
-                                            >
-                                                <p className="font-medium text-slate-800 dark:text-slate-200">{answer.answer}</p>
-                                                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">- {answer.playerName}</p>
-                                            </li>
-                                        ))}
+                                    <h2 className="text-2xl font-bold mb-5 text-center text-slate-800 dark:text-slate-200">Round Results</h2>
+                                    
+                                    {/* All answers with authors and voting results */}
+                                    <h3 className="text-xl font-semibold mb-4 text-slate-800 dark:text-slate-200">All Answers:</h3>
+                                    <ul className="space-y-4 max-h-[40vh] overflow-y-auto pr-1 fancy-scrollbar">
+                                        {allAnswers.map((answer, index) => {
+                                            // Find votes for this answer
+                                            let correctVotes = 0;
+                                            let totalVotes = 0;
+                                            
+                                            if (results?.votingResults) {
+                                                results.votingResults.forEach(([voterId, votes]) => {
+                                                    votes.forEach(vote => {
+                                                        if (vote.answerId === answer.playerId) {
+                                                            totalVotes++;
+                                                            if (vote.guessedPlayerId === answer.playerId) {
+                                                                correctVotes++;
+                                                            }
+                                                        }
+                                                    });
+                                                });
+                                            }
+                                            
+                                            // Highlight the current player's answer
+                                            const isCurrentPlayerAnswer = answer.playerId === currentPlayer?.id;
+                                            
+                                            return (
+                                                <li 
+                                                    key={index} 
+                                                    className={`p-4 rounded-lg shadow-sm border hover:shadow-md transition ${
+                                                        isCurrentPlayerAnswer 
+                                                            ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800' 
+                                                            : 'bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-800 dark:to-slate-700 border-slate-200 dark:border-slate-600'
+                                                    }`}
+                                                >
+                                                    <p className="font-medium text-slate-800 dark:text-slate-200">{answer.answer}</p>
+                                                    <div className="mt-2 flex flex-wrap items-center justify-between">
+                                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                                            <span className="mr-1">By:</span>
+                                                            <span className={isCurrentPlayerAnswer ? "text-blue-600 dark:text-blue-400 font-semibold" : ""}>
+                                                                {answer.playerName} {isCurrentPlayerAnswer ? "(You)" : ""}
+                                                            </span>
+                                                        </p>
+                                                        
+                                                        <span className="text-xs bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full text-slate-600 dark:text-slate-300">
+                                                            {correctVotes} of {totalVotes} players guessed correctly
+                                                        </span>
+                                                    </div>
+                                                    
+                                                    {/* Show current player's guess for this answer */}
+                                                    {!isCurrentPlayerAnswer && results?.votingResults && (
+                                                        <div className="mt-2 text-sm">
+                                                            {(() => {
+                                                                // Find this player's vote for this answer
+                                                                const myVotes = results.votingResults.find(([voterId]) => voterId === currentPlayer?.id)?.[1];
+                                                                const myVote = myVotes?.find(vote => vote.answerId === answer.playerId);
+                                                                
+                                                                if (myVote) {
+                                                                    const guessedPlayer = players.find(p => p.id === myVote.guessedPlayerId);
+                                                                    const isCorrect = myVote.guessedPlayerId === answer.playerId;
+                                                                    
+                                                                    return (
+                                                                        <div className={`mt-1 p-2 rounded-md ${
+                                                                            isCorrect 
+                                                                                ? 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-100 dark:border-green-800' 
+                                                                                : 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-100 dark:border-red-800'
+                                                                        }`}>
+                                                                            <span>You guessed: </span>
+                                                                            <span className="font-medium">{guessedPlayer?.name}</span>
+                                                                            <span className="ml-1">
+                                                                                {isCorrect ? '✓' : '✗'}
+                                                                            </span>
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                                return null;
+                                                            })()}
+                                                        </div>
+                                                    )}
+                                                </li>
+                                            );
+                                        })}
                                     </ul>
 
                                     {isHost && (
@@ -399,7 +666,7 @@ function LobbyContent() {
                                             className="w-full mt-6 py-3 px-4 bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg flex items-center justify-center transition duration-300"
                                         >
                                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                                                <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 010 1.414l-4 4a1 1 01-1.414-1.414L7.414 9H15a1 1 110 2H7.414l2.293 2.293a1 1 010 1.414z" clipRule="evenodd" />
                                             </svg>
                                             Start Next Round
                                         </button>
@@ -410,15 +677,23 @@ function LobbyContent() {
                             <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                                 <h2 className="text-xl font-bold mb-4 text-center text-slate-800 dark:text-slate-200">Players</h2>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                    {players.map((player) => (
-                                        <div key={player.id} className="bg-white dark:bg-slate-700 p-3 rounded-lg text-center shadow-sm border border-slate-200 dark:border-slate-600 hover:shadow-md transition">
-                                            <div className="font-medium text-slate-800 dark:text-slate-200 truncate">{player.name}</div>
-                                            {player.isHost && (
-                                                <span className="inline-block mt-1 text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 px-2 py-1 rounded-full">Host</span>
-                                            )}
-                                        </div>
-                                    ))}
+                                    {/* Sort players by score, highest first */}
+                                    {players
+                                        .slice()
+                                        .sort((a, b) => (b.score || 0) - (a.score || 0))
+                                        .map((player) => (
+                                            <div key={player.id} className="bg-white dark:bg-slate-700 p-3 rounded-lg text-center shadow-sm border border-slate-200 dark:border-slate-600 hover:shadow-md transition">
+                                                <div className="font-medium text-slate-800 dark:text-slate-200 truncate">{player.name}</div>
+                                                <div className="flex items-center justify-center gap-2 mt-1">
+                                                    {player.isHost && (
+                                                        <span className="text-xs bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200 px-2 py-1 rounded-full">Host</span>
+                                                    )}
+                                                    <span className="text-lg font-bold text-indigo-600 dark:text-indigo-400">{player.score || 0}</span>
+                                                </div>
+                                            </div>
+                                        ))}
                                 </div>
+                                {/* Remove the duplicate scores section that was here before */}
                             </div>
                         </div>
                     </div>
@@ -439,7 +714,7 @@ function LobbyContent() {
                 <div className="flex justify-between items-center max-w-7xl mx-auto">
                     <Link href="/" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium hover:underline flex items-center transition">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
+                            <path fillRule="evenodd" d="M9.707 14.707a1 1 01-1.414 0l-4-4a1 1 010-1.414l4-4a1 1 011.414 1.414L7.414 9H15a1 1 110 2H7.414l2.293 2.293a1 1 010 1.414z" clipRule="evenodd" />
                         </svg>
                         Back to Home
                     </Link>
@@ -499,7 +774,7 @@ function LobbyContent() {
                                             placeholder="Enter lobby code"
                                             value={lobbyCode}
                                             onChange={(e) => setLobbyCode(e.target.value.toUpperCase())}
-                                            maxLength={6}
+                                            maxLength={4}
                                             required
                                         />
                                     </div>
@@ -516,11 +791,11 @@ function LobbyContent() {
                                 >
                                     {mode === 'create' 
                                         ? <><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                                            <path fillRule="evenodd" d="M10 3a1 1 011 1v5h5a1 1 110 2h-5v5a1 1 11-2 0v-5H4a1 1 110-2h5V4a1 1 011-1z" clipRule="evenodd" />
                                           </svg> Create Lobby</> 
                                         : <><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                                            <path fillRule="evenodd" d="M3 8a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                                            <path fillRule="evenodd" d="M3 14a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                                            <path fillRule="evenodd" d="M3 8a1 1 011-1h12a1 1 110 2H4a1 1 01-1-1z" clipRule="evenodd" />
+                                            <path fillRule="evenodd" d="M3 14a1 1 011-1h12a1 1 110 2H4a1 1 01-1-1z" clipRule="evenodd" />
                                           </svg> Join Lobby</>
                                     }
                                 </button>

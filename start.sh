@@ -2,6 +2,7 @@
 
 # Define log file
 LOG_FILE="masquerade.log"
+BACKEND_LOG="backend.log"
 
 echo "Starting Masquerade game servers..."
 echo "$(date) - Starting servers" > $LOG_FILE
@@ -54,7 +55,7 @@ if [ -f "package.json" ]; then
         fi
     fi
     
-    nohup npm start >> ../$LOG_FILE 2>&1 &
+    nohup npm start >> ../$BACKEND_LOG 2>&1 &
     BACKEND_PID=$!
     echo "Backend started with PID: $BACKEND_PID"
 else
