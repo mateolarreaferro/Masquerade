@@ -276,6 +276,9 @@ io.on('connection', (socket) => {
             }
         }
         
+        // Clear the socket's lobbyCode
+        delete socket.lobbyCode;
+        
         // Update remaining players
         io.to(lobbyCode).emit('playerListUpdate', { players: lobby.players });
     });
