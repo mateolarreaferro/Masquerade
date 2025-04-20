@@ -96,35 +96,42 @@ function LobbyContent() {
                 ? 'https://games.gabema.ga' 
                 : 'http://localhost:3001';
             
-            // Detect if iOS device
+            // Detect device type
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
+            // Log connection attempt for debugging
+            console.log(`Attempting to connect to ${socketUrl} from ${isIOS ? 'iOS' : isMobile ? 'Mobile' : 'Desktop'}`);
+            
+            // Create Socket.IO instance with XHR polling fixes
             socketInstance = io(socketUrl, {
-                // iOS-optimized Socket.IO configuration
-                transports: isIOS ? ['polling'] : ['polling', 'websocket'], // Force polling on iOS
+                // Use polling for all clients to ensure consistency and prevent XHR errors
+                transports: ['polling'],
                 forceNew: false,
                 reconnection: true,
-                reconnectionAttempts: 15,
-                reconnectionDelay: 1000,
-                reconnectionDelayMax: 5000,
+                reconnectionAttempts: 10,
+                reconnectionDelay: 2000,
+                reconnectionDelayMax: 10000,
                 timeout: 20000,
                 autoConnect: true,
                 path: '/socket.io',
                 withCredentials: false,
-                // Smaller packet sizes and more frequent pings for iOS
-                ...(isIOS && {
-                  pingInterval: 10000, // More frequent pings for iOS
-                  pingTimeout: 30000,  // Longer ping timeout for iOS
-                  maxHttpBufferSize: 1e6 // Smaller buffer size for iOS
+                // Smaller packet sizes to prevent large data errors
+                ...(isMobile && {
+                  pingInterval: 10000, // More frequent pings for mobile
+                  pingTimeout: 30000   // Longer ping timeout for mobile
                 }),
+                // Polling specific configurations
+                upgrade: false, // Prevent transport upgrades which can cause XHR errors
+                // Add extra headers to help identify client
                 extraHeaders: {
-                    'User-Agent': navigator.userAgent // Help server detect mobile clients
+                    'User-Agent': navigator.userAgent
                 }
             });
             
-            // Add error logging for connection issues
+            // Add all error events for debugging
             socketInstance.on('connect_error', (err) => {
-                console.error('Socket.io connect error:', err);
+                console.error('Socket.io connect error:', err.message);
             });
             
             socketInstance.on('connect_timeout', () => {
@@ -136,11 +143,15 @@ function LobbyContent() {
             });
             
             socketInstance.on('reconnect_error', (err) => {
-                console.error('Socket.io reconnect error:', err);
+                console.error('Socket.io reconnect error:', err.message);
             });
             
             socketInstance.on('reconnect_failed', () => {
                 console.error('Socket.io reconnect failed');
+            });
+            
+            socketInstance.on('error', (err) => {
+                console.error('Socket.io general error:', err);
             });
         }
         

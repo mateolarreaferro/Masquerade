@@ -14,23 +14,49 @@ const server = http.createServer(app);
 const compression = require('compression');
 app.use(compression());
 
-// Add caching middleware
+// Add CORS middleware to handle preflight requests for Socket.IO polling
 app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+    return res.status(204).send();
+  }
+  
+  // Add caching for GET requests
   if (req.method === 'GET') {
     res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
   }
   next();
 });
 
+// Add route for health check and to verify server is running
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'Server is running' });
+});
+
 const io = new Server(server, {
     cors: {
         origin: "*", // In production, restrict this to your frontend domain
-        methods: ["GET", "POST"]
+        methods: ["GET", "POST", "OPTIONS"],
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization"]
     },
-    // Socket.io performance optimizations
-    transports: ['websocket', 'polling'],
-    pingTimeout: 60000,
-    pingInterval: 25000,
+    // Better Socket.IO configuration for handling polling
+    transports: ['polling', 'websocket'], // Prioritize polling to ensure compatibility
+    pingTimeout: 30000,
+    pingInterval: 10000,
+    upgradeTimeout: 30000,
+    maxHttpBufferSize: 1e8, // 100MB
+    allowUpgrades: true,
+    perMessageDeflate: {
+        threshold: 32 * 1024 // Only compress data if message is larger than 32KB
+    },
+    httpCompression: {
+        threshold: 1024 // Compress HTTP requests larger than 1KB
+    }
 });
 
 // Cache prompts and answer styles in memory
