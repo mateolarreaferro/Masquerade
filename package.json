@@ -12,8 +12,8 @@
     "dev": "concurrently \"npm run backend:start\" \"npm run frontend:dev\"",
     "prestart": "ln -sf ./frontend/app ./app && ln -sf ./frontend/public ./public && ln -sf ./frontend/components ./components && ln -sf ./frontend/.next ./.next",
     "start": "next start -p ${SERVER_PORT:-3000}",
-    "prebuild": "ln -sf ./frontend/app ./app && ln -sf ./frontend/public ./public && ln -sf ./frontend/components ./components",
-    "build": "cd frontend && npm install && npm run build && cd .. && ln -sf ./frontend/.next ./.next"
+    "prebuild": "mkdir -p ./app && ln -sf ../frontend/app/* ./app/ && mkdir -p ./public && ln -sf ../frontend/public/* ./public/",
+    "build": "cd frontend && npm install && npm run build && cd .. && mkdir -p .next && cp -r ./frontend/.next/* ./.next/"
   },
   "dependencies": {
     "concurrently": "^8.2.2",
