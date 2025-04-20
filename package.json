@@ -3,20 +3,27 @@
   "version": "1.0.0",
   "description": "Masquerade game with frontend and backend",
   "scripts": {
-    "install frontend": "cd frontend && npm install",
-    "install backend": "cd backend && npm install",
-    "frontend:dev": "cd frontend && npm run dev",
-    "frontend:build": "cd frontend && npm run build",
-    "frontend:start": "cd frontend && npm run start",
-    "backend:start": "cd backend && node server.js",
-    "dev": "concurrently \"npm run backend:start\" \"npm run frontend:dev\"",
-    "prestart": "ln -sf ./frontend/app ./app && ln -sf ./frontend/public ./public && ln -sf ./frontend/components ./components && ln -sf ./frontend/.next ./.next",
+    "install:backend": "cd backend && npm install",
+    "dev": "next dev --turbopack",
+    "build": "next build",
     "start": "next start -p ${SERVER_PORT:-3000}",
-    "prebuild": "mkdir -p ./app && ln -sf ../frontend/app/* ./app/ && mkdir -p ./public && ln -sf ../frontend/public/* ./public/",
-    "build": "cd frontend && npm install && npm run build && cd .. && mkdir -p .next && cp -r ./frontend/.next/* ./.next/"
+    "lint": "next lint",
+    "backend:start": "cd backend && node server.js",
+    "dev:all": "concurrently \"npm run backend:start\" \"npm run dev\""
   },
   "dependencies": {
     "concurrently": "^8.2.2",
-    "next": "15.3.1"
+    "next": "15.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "socket.io-client": "^4.8.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
