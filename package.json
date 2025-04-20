@@ -10,8 +10,10 @@
     "frontend:start": "cd frontend && npm run start",
     "backend:start": "cd backend && node server.js",
     "dev": "concurrently \"npm run backend:start\" \"npm run frontend:dev\"",
-    "start": "cd frontend && next start -p ${SERVER_PORT:-3000}",
-    "build": "cd frontend && npm install && npm run build"
+    "prestart": "ln -sf ./frontend/app ./app && ln -sf ./frontend/public ./public && ln -sf ./frontend/components ./components && ln -sf ./frontend/.next ./.next",
+    "start": "next start -p ${SERVER_PORT:-3000}",
+    "prebuild": "ln -sf ./frontend/app ./app && ln -sf ./frontend/public ./public && ln -sf ./frontend/components ./components",
+    "build": "cd frontend && npm install && npm run build && cd .. && ln -sf ./frontend/.next ./.next"
   },
   "dependencies": {
     "concurrently": "^8.2.2",
