@@ -8,16 +8,12 @@ export default function Home() {
         <main className="flex flex-col items-center">
           {/* Header Section */}
           <div className="text-center mb-12">
-            <div className="inline-block p-3 sm:p-4 mb-6 rounded-full bg-gradient-to-r from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 sm:h-16 sm:w-16 text-indigo-600 dark:text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </div>
+            
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 inline-block text-transparent bg-clip-text">
-              Masquerade
+              masquerade
             </h1>
             <p className="text-xl sm:text-2xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
-              A social deduction game where identities are hidden and creativity is revealed
+              a game where you unmask your friends' true identities
             </p>
           </div>
           
@@ -36,6 +32,7 @@ export default function Home() {
                 </Link>
                 <Link
                   className="flex-1 py-4 px-6 bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 font-medium rounded-xl shadow-md border border-slate-200 dark:border-slate-600 hover:shadow-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition duration-300 text-center flex items-center justify-center"
+                  
                   href="/lobby?mode=join"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
@@ -72,33 +69,8 @@ export default function Home() {
                 </div>
                 
                 <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 p-5 rounded-xl">
-                  <h3 className="font-semibold text-lg mb-2 text-indigo-800 dark:text-indigo-200">Perfect for:</h3>
-                  <ul className="grid grid-cols-2 gap-3">
-                    <li className="flex items-center text-slate-700 dark:text-slate-300">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-600 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      Game nights
-                    </li>
-                    <li className="flex items-center text-slate-700 dark:text-slate-300">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-600 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      Team building
-                    </li>
-                    <li className="flex items-center text-slate-700 dark:text-slate-300">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-600 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      Virtual hangouts
-                    </li>
-                    <li className="flex items-center text-slate-700 dark:text-slate-300">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-green-600 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                      Ice breakers
-                    </li>
-                  </ul>
+                  <h3 className="font-semibold text-lg mb-2 text-indigo-800 dark:text-indigo-200">Ready to play? Join or create a game now!</h3>
+                  
                 </div>
               </div>
             </div>
@@ -111,7 +83,7 @@ export default function Home() {
         
         <footer className="text-center">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            © 2025 Masquerade Game | An interactive party game for friends
+            Masquerade Game | An interactive party game for friends
           </p>
         </footer>
       </div>

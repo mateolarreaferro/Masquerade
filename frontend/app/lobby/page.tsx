@@ -56,6 +56,16 @@ function LobbyContent() {
     const [answersSubmitted, setAnswersSubmitted] = useState(0);
     const [totalAnswersNeeded, setTotalAnswersNeeded] = useState(0);
     
+    // New state for prompt selection phase
+    const [isPromptSelectionPhase, setIsPromptSelectionPhase] = useState(false);
+    const [isStyleSelectionPhase, setIsStyleSelectionPhase] = useState(false);
+    const [promptOptions, setPromptOptions] = useState<string[]>([]);
+    const [styleOptions, setStyleOptions] = useState<string[]>([]);
+    const [promptSelectingPlayerId, setPromptSelectingPlayerId] = useState<string>('');
+    const [styleSelectingPlayerId, setStyleSelectingPlayerId] = useState<string>('');
+    const [selectedPrompt, setSelectedPrompt] = useState<string>('');
+    const [selectedStyle, setSelectedStyle] = useState<string>('');
+    
     // New state for voting phase
     const [isVotingPhase, setIsVotingPhase] = useState(false);
     const [answersForVoting, setAnswersForVoting] = useState<AnswerForVoting[]>([]);
@@ -213,7 +223,14 @@ function LobbyContent() {
             // Update player scores in the players array too
             setPlayers(prevPlayers => {
                 return prevPlayers.map(player => {
-                    const scoreInfo = scores.find(s => s.id === player.id);
+                    // Define an interface for player scores
+                    interface PlayerScore {
+                      id: string;
+                      name: string;
+                      score: number;
+                    }
+                    
+                    const scoreInfo: PlayerScore | undefined = scores.find((s: PlayerScore) => s.id === player.id);
                     if (scoreInfo) {
                         return { ...player, score: scoreInfo.score };
                     }
@@ -222,6 +239,59 @@ function LobbyContent() {
             });
             
             setShowAnswers(true);
+        });
+
+        // New event listeners for prompt selection phase
+        socket.on('startPromptSelection', ({ prompts, playerId }) => {
+            console.log('Starting prompt selection with options:', prompts);
+            setIsPromptSelectionPhase(true);
+            setPromptOptions(prompts);
+            setPromptSelectingPlayerId(playerId);
+            setSelectedPrompt('');
+            
+            // Reset other game states to ensure clean UI
+            setIsStyleSelectionPhase(false);
+            setHasSubmittedAnswer(false);
+            setShowAnswers(false);
+            setIsVotingPhase(false);
+            setIsResultsPhase(false);
+        });
+        
+        socket.on('promptSelected', ({ prompt }) => {
+            console.log('Prompt selected:', prompt);
+            setSelectedPrompt(prompt);
+            setIsPromptSelectionPhase(false);
+        });
+        
+        // New event listeners for style selection phase
+        socket.on('startStyleSelection', ({ styles, playerId }) => {
+            console.log('Starting style selection with options:', styles);
+            setIsStyleSelectionPhase(true);
+            setStyleOptions(styles);
+            setStyleSelectingPlayerId(playerId);
+            setSelectedStyle('');
+        });
+        
+        socket.on('styleSelected', ({ style }) => {
+            console.log('Style selected:', style);
+            setSelectedStyle(style);
+            setIsStyleSelectionPhase(false);
+        });
+        
+        socket.on('roundSetup', ({ prompt, answerStyle }) => {
+            console.log('Round setup complete with prompt:', prompt, 'and style:', answerStyle);
+            // Update the prompt and style values to display to all players
+            setCurrentPrompt(prompt);
+            setCurrentAnswerStyle(answerStyle);
+            
+            // Reset states for the answer submission phase
+            setIsPromptSelectionPhase(false);
+            setIsStyleSelectionPhase(false);
+            setHasSubmittedAnswer(false);
+            setUserAnswer('');
+            setAllAnswers([]);
+            setShowAnswers(false);
+            setIsVotingPhase(false);
         });
 
         // Make sure we're connected
@@ -248,6 +318,11 @@ function LobbyContent() {
             socket.off('startVotingPhase');
             socket.off('votingProgress');
             socket.off('revealResults');
+            socket.off('startPromptSelection');
+            socket.off('promptSelected');
+            socket.off('startStyleSelection');
+            socket.off('styleSelected');
+            socket.off('roundSetup');
             // We're not disconnecting the socket here to allow persistence between page navigations
         };
     }, []);
@@ -416,21 +491,136 @@ function LobbyContent() {
                         <h1 className="text-3xl sm:text-4xl font-bold mb-6 text-center text-slate-800 dark:text-slate-100">Game in Progress</h1>
                         
                         <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
+                            
+                            {/* Prompt Selection Phase */}
+                            {isPromptSelectionPhase && (
+                                <div className="mb-8 space-y-4">
+                                    <h2 className="text-2xl font-bold mb-4 text-center text-slate-800 dark:text-slate-200">
+                                        {promptSelectingPlayerId === currentPlayer?.id ? 
+                                            "Choose a Prompt" : 
+                                            `${players.find(p => p.id === promptSelectingPlayerId)?.name} is choosing a prompt...`}
+                                    </h2>
+                                    
+                                    {promptSelectingPlayerId === currentPlayer?.id ? (
+                                        <div className="space-y-3">
+                                            <p className="text-center mb-4 text-slate-600 dark:text-slate-300">
+                                                Select one of the prompts below:
+                                            </p>
+                                            {promptOptions.map((prompt, index) => (
+                                                <button
+                                                    key={index}
+                                                    className={`w-full p-4 text-left text-lg rounded-lg border transition-all ${
+                                                        selectedPrompt === prompt 
+                                                        ? 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/40 dark:to-indigo-900/40 border-blue-300 dark:border-blue-700 shadow-md'
+                                                        : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                                                    }`}
+                                                    onClick={() => setSelectedPrompt(prompt)}
+                                                >
+                                                    {prompt}
+                                                </button>
+                                            ))}
+                                            
+                                            {selectedPrompt && (
+                                                <button
+                                                    className="w-full mt-6 py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 flex items-center justify-center"
+                                                    onClick={() => {
+                                                        if (socketRef.current && socketRef.current.connected) {
+                                                            socketRef.current.emit('selectPrompt', { prompt: selectedPrompt });
+                                                        }
+                                                    }}
+                                                >
+                                                    Confirm Selection
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center">
+                                            <div className="flex justify-center mb-4">
+                                                <div className="animate-pulse w-16 h-16 text-indigo-500">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 01-2 2H5a2 2 01-2-2v-6a2 2 012-2m14 0V9a2 2 00-2-2M5 11V9a2 2 00-2-2m0 0V5a2 2 0 012-2h6a2 2 012 2v2M7 7h10" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <p className="text-slate-600 dark:text-slate-300">Please wait while they choose...</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            
+                            {/* Style Selection Phase */}
+                            {isStyleSelectionPhase && (
+                                <div className="mb-8 space-y-4">
+                                    <h2 className="text-2xl font-bold mb-4 text-center text-slate-800 dark:text-slate-200">
+                                        {styleSelectingPlayerId === currentPlayer?.id ? 
+                                            "Choose an Answer Style" : 
+                                            `${players.find(p => p.id === styleSelectingPlayerId)?.name} is choosing an answer style...`}
+                                    </h2>
+                                    
+                                    {styleSelectingPlayerId === currentPlayer?.id ? (
+                                        <div className="space-y-3">
+                                            <p className="text-center mb-4 text-slate-600 dark:text-slate-300">
+                                                Select one of the answer styles below:
+                                            </p>
+                                            {styleOptions.map((style, index) => (
+                                                <button
+                                                    key={index}
+                                                    className={`w-full p-4 text-left text-lg rounded-lg border transition-all ${
+                                                        selectedStyle === style 
+                                                        ? 'bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/40 dark:to-pink-900/40 border-purple-300 dark:border-purple-700 shadow-md'
+                                                        : 'bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600'
+                                                    }`}
+                                                    onClick={() => setSelectedStyle(style)}
+                                                >
+                                                    {style}
+                                                </button>
+                                            ))}
+                                            
+                                            {selectedStyle && (
+                                                <button
+                                                    className="w-full mt-6 py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 flex items-center justify-center"
+                                                    onClick={() => {
+                                                        if (socketRef.current && socketRef.current.connected) {
+                                                            socketRef.current.emit('selectStyle', { style: selectedStyle });
+                                                        }
+                                                    }}
+                                                >
+                                                    Confirm Selection
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center">
+                                            <div className="flex justify-center mb-4">
+                                                <div className="animate-pulse w-16 h-16 text-purple-500">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <p className="text-slate-600 dark:text-slate-300">Please wait while they choose an answer style...</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Prompt and Answer Style Display */}
-                            <div className="mb-8 space-y-4">
-                                <div className="text-center bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/40 dark:to-indigo-900/40 p-5 sm:p-6 rounded-xl shadow-inner border border-blue-100 dark:border-blue-800">
-                                    <h2 className="text-xl font-semibold mb-2 text-blue-800 dark:text-blue-300">Prompt:</h2>
-                                    <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{currentPrompt}</p>
+                            {!isPromptSelectionPhase && !isStyleSelectionPhase && (
+                                <div className="mb-8 space-y-4">
+                                    <div className="text-center bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/40 dark:to-indigo-900/40 p-5 sm:p-6 rounded-xl shadow-inner border border-blue-100 dark:border-blue-800">
+                                        <h2 className="text-xl font-semibold mb-2 text-blue-800 dark:text-blue-300">Prompt:</h2>
+                                        <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{currentPrompt}</p>
+                                    </div>
+                                    
+                                    <div className="text-center bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/40 dark:to-pink-900/40 p-4 sm:p-5 rounded-xl shadow-inner border border-purple-100 dark:border-purple-800">
+                                        <h3 className="text-md font-medium mb-1 text-purple-800 dark:text-purple-300">Answer Style:</h3>
+                                        <p className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">{currentAnswerStyle}</p>
+                                    </div>
                                 </div>
-                                
-                                <div className="text-center bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/40 dark:to-pink-900/40 p-4 sm:p-5 rounded-xl shadow-inner border border-purple-100 dark:border-purple-800">
-                                    <h3 className="text-md font-medium mb-1 text-purple-800 dark:text-purple-300">Answer Style:</h3>
-                                    <p className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">{currentAnswerStyle}</p>
-                                </div>
-                            </div>
+                            )}
 
                             {/* Answer Submission Form */}
-                            {!hasSubmittedAnswer && !showAnswers && !isVotingPhase ? (
+                            {!isPromptSelectionPhase && !isStyleSelectionPhase && !hasSubmittedAnswer && !showAnswers && !isVotingPhase ? (
                                 <form onSubmit={handleSubmitAnswer} className="mb-8">
                                     <div className="mb-4">
                                         <label className="block text-sm font-medium mb-2 text-slate-700 dark:text-slate-300" htmlFor="userAnswer">
@@ -463,7 +653,7 @@ function LobbyContent() {
                                         Submit Answer
                                     </button>
                                 </form>
-                            ) : !showAnswers && !isVotingPhase ? (
+                            ) : !isPromptSelectionPhase && !isStyleSelectionPhase && !showAnswers && !isVotingPhase ? (
                                 <div className="mb-8">
                                     <div className="p-5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-lg shadow-inner border border-green-100 dark:border-green-800 mb-6 text-center">
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mx-auto text-green-500 dark:text-green-400 mb-2" viewBox="0 0 20 20" fill="currentColor">
@@ -574,7 +764,7 @@ function LobbyContent() {
                                         </div>
                                     )}
                                 </div>
-                            ) : (
+                            ) : showAnswers && (
                                 <div className="mb-8">
                                     <h2 className="text-2xl font-bold mb-5 text-center text-slate-800 dark:text-slate-200">Round Results</h2>
                                     

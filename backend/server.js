@@ -63,6 +63,9 @@ if (answerStyles.length === 0) {
 // Store active lobbies and their players
 const lobbies = new Map();
 
+// Track player indices for prompt and answer style selection rotation
+const playerSelectionIndices = new Map();
+
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
@@ -87,7 +90,18 @@ io.on('connection', (socket) => {
             roundComplete: false,
             inVotingPhase: false, // Track if we're in the voting phase
             votes: new Map(),     // Store player votes
-            playerScores: new Map() // Track player scores
+            playerScores: new Map(), // Track player scores
+            // New properties for prompt and style selection phases
+            inPromptSelectionPhase: false,
+            inStyleSelectionPhase: false,
+            promptOptions: [],
+            styleOptions: []
+        });
+        
+        // Initialize player selection indices for this lobby
+        playerSelectionIndices.set(lobbyCode, {
+            promptPlayerIndex: 0,
+            stylePlayerIndex: 1 // Start with different players for prompt and style
         });
         
         // Join the socket to the lobby room
@@ -152,18 +166,18 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Select random prompt and answer style
-        lobby.currentPrompt = prompts[Math.floor(Math.random() * prompts.length)];
-        lobby.currentAnswerStyle = answerStyles[Math.floor(Math.random() * answerStyles.length)];
+        // Set the game as started
         lobby.gameStarted = true;
-        lobby.roundAnswers = new Map();
-        lobby.roundComplete = false;
-        
         console.log(`Game started in lobby: ${lobbyCode}`);
+        
+        // Notify all players that the game has started
         io.to(lobbyCode).emit('gameStarted', {
-            prompt: lobby.currentPrompt,
-            answerStyle: lobby.currentAnswerStyle
+            prompt: "",  // Will be filled after selection
+            answerStyle: ""
         });
+        
+        // Start the first round with prompt selection
+        startPromptSelectionPhase(lobbyCode);
     });
 
     // Handle player answer submission
@@ -279,17 +293,77 @@ io.on('connection', (socket) => {
         if (!lobby || !lobby.gameStarted) return;
         if (socket.id !== lobby.hostId) return;
         
-        // Select new random prompt and answer style
-        lobby.currentPrompt = prompts[Math.floor(Math.random() * prompts.length)];
-        lobby.currentAnswerStyle = answerStyles[Math.floor(Math.random() * answerStyles.length)];
-        lobby.roundAnswers = new Map();
-        lobby.roundComplete = false;
-        lobby.inVotingPhase = false;
+        // Instead of directly selecting a random prompt and answer style,
+        // we'll start with the prompt selection phase
+        startPromptSelectionPhase(lobbyCode);
+    });
+    
+    // Handle prompt selection
+    socket.on('selectPrompt', ({ prompt }) => {
+        const lobbyCode = socket.lobbyCode;
+        if (!lobbyCode) return;
         
-        io.to(lobbyCode).emit('newRound', {
+        const lobby = lobbies.get(lobbyCode);
+        if (!lobby || !lobby.inPromptSelectionPhase) return;
+        
+        const indices = playerSelectionIndices.get(lobbyCode);
+        if (!indices) return;
+        
+        // Check if this player is the designated prompt selector
+        const promptSelector = lobby.players[indices.promptPlayerIndex];
+        if (!promptSelector || promptSelector.id !== socket.id) {
+            socket.emit('error', { message: 'You are not the prompt selector for this round' });
+            return;
+        }
+        
+        // Save the selected prompt
+        lobby.currentPrompt = prompt;
+        lobby.inPromptSelectionPhase = false;
+        
+        // Notify all players about the selected prompt
+        io.to(lobbyCode).emit('promptSelected', { prompt });
+        
+        // Start the style selection phase
+        startStyleSelectionPhase(lobbyCode);
+    });
+    
+    // Handle style selection
+    socket.on('selectStyle', ({ style }) => {
+        const lobbyCode = socket.lobbyCode;
+        if (!lobbyCode) return;
+        
+        const lobby = lobbies.get(lobbyCode);
+        if (!lobby || !lobby.inStyleSelectionPhase) return;
+        
+        const indices = playerSelectionIndices.get(lobbyCode);
+        if (!indices) return;
+        
+        // Check if this player is the designated style selector
+        const styleSelector = lobby.players[indices.stylePlayerIndex];
+        if (!styleSelector || styleSelector.id !== socket.id) {
+            socket.emit('error', { message: 'You are not the style selector for this round' });
+            return;
+        }
+        
+        // Save the selected style
+        lobby.currentAnswerStyle = style;
+        lobby.inStyleSelectionPhase = false;
+        
+        // Notify all players about the selected style
+        io.to(lobbyCode).emit('styleSelected', { style });
+        
+        // Start the answer submission phase with the selected prompt and style
+        io.to(lobbyCode).emit('roundSetup', {
             prompt: lobby.currentPrompt,
             answerStyle: lobby.currentAnswerStyle
         });
+        
+        // Update indices for next round
+        updatePlayerSelectionIndices(lobbyCode);
+        
+        // Reset round state for new answers
+        lobby.roundAnswers = new Map();
+        lobby.roundComplete = false;
     });
 
     // Handle disconnection
@@ -408,6 +482,81 @@ function calculateScores(roundAnswers, votes, players) {
     });
     
     return scores;
+}
+
+// Start the prompt selection phase
+function startPromptSelectionPhase(lobbyCode) {
+    const lobby = lobbies.get(lobbyCode);
+    if (!lobby) return;
+    
+    // Select a subset of prompts for the player to choose from
+    const promptOptions = getRandomSubset(prompts, 3); // Select 3 random prompts
+    lobby.promptOptions = promptOptions;
+    lobby.inPromptSelectionPhase = true;
+    
+    // Get the indices for player selection
+    const indices = playerSelectionIndices.get(lobbyCode);
+    if (!indices) return;
+    
+    // Get the player who will select the prompt
+    const promptSelector = lobby.players[indices.promptPlayerIndex];
+    if (!promptSelector) return;
+    
+    // Notify all players about the prompt selection phase and who is selecting
+    io.to(lobbyCode).emit('startPromptSelection', { 
+        prompts: promptOptions, 
+        playerId: promptSelector.id 
+    });
+}
+
+// Start the style selection phase
+function startStyleSelectionPhase(lobbyCode) {
+    const lobby = lobbies.get(lobbyCode);
+    if (!lobby) return;
+    
+    // Select a subset of styles for the player to choose from
+    const styleOptions = getRandomSubset(answerStyles, 3); // Select 3 random styles
+    lobby.styleOptions = styleOptions;
+    lobby.inStyleSelectionPhase = true;
+    
+    // Get the indices for player selection
+    const indices = playerSelectionIndices.get(lobbyCode);
+    if (!indices) return;
+    
+    // Get the player who will select the style
+    const styleSelector = lobby.players[indices.stylePlayerIndex];
+    if (!styleSelector) return;
+    
+    // Notify all players about the style selection phase and who is selecting
+    io.to(lobbyCode).emit('startStyleSelection', { 
+        styles: styleOptions, 
+        playerId: styleSelector.id 
+    });
+}
+
+// Get a random subset of an array
+function getRandomSubset(array, size) {
+    const shuffled = shuffleArray([...array]); // Make a copy before shuffling
+    return shuffled.slice(0, Math.min(size, shuffled.length));
+}
+
+// Update player selection indices for next round
+function updatePlayerSelectionIndices(lobbyCode) {
+    const indices = playerSelectionIndices.get(lobbyCode);
+    if (!indices) return;
+    
+    const lobby = lobbies.get(lobbyCode);
+    if (!lobby) return;
+    
+    // Rotate indices for next round
+    indices.promptPlayerIndex = (indices.promptPlayerIndex + 1) % lobby.players.length;
+    
+    // Make sure prompt and style selectors are different players if possible
+    if (lobby.players.length > 1) {
+        indices.stylePlayerIndex = (indices.promptPlayerIndex + 1) % lobby.players.length;
+    } else {
+        indices.stylePlayerIndex = 0; // If only one player, they select both
+    }
 }
 
 const PORT = process.env.PORT || 3001;
