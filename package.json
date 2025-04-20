@@ -10,7 +10,7 @@
     "frontend:start": "cd frontend && npm run start",
     "backend:start": "cd backend && node server.js",
     "dev": "concurrently \"npm run backend:start\" \"npm run frontend:dev\"",
-    "start": "cd frontend && npx next start -p ${SERVER_PORT:-3000}",
+    "start": "cd frontend && next start -p ${SERVER_PORT:-3000}",
     "build": "cd frontend && npm install && npm run build"
   },
   "dependencies": {
