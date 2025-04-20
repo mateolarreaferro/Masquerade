@@ -4,7 +4,7 @@
   "description": "Masquerade game with frontend and backend",
   "scripts": {
     "install:backend": "cd backend && npm install",
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start -p ${SERVER_PORT:-3000}",
     "lint": "next lint",

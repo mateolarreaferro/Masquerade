@@ -96,14 +96,51 @@ function LobbyContent() {
                 ? 'https://games.gabema.ga' 
                 : 'http://localhost:3001';
             
+            // Detect if iOS device
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+            
             socketInstance = io(socketUrl, {
-                // Enable all transports, starting with websocket but falling back to polling if needed
-                transports: ['websocket', 'polling'],
+                // iOS-optimized Socket.IO configuration
+                transports: isIOS ? ['polling'] : ['polling', 'websocket'], // Force polling on iOS
+                forceNew: false,
                 reconnection: true,
-                reconnectionAttempts: 10,
+                reconnectionAttempts: 15,
                 reconnectionDelay: 1000,
-                timeout: 10000,
-                path: '/socket.io'
+                reconnectionDelayMax: 5000,
+                timeout: 20000,
+                autoConnect: true,
+                path: '/socket.io',
+                withCredentials: false,
+                // Smaller packet sizes and more frequent pings for iOS
+                ...(isIOS && {
+                  pingInterval: 10000, // More frequent pings for iOS
+                  pingTimeout: 30000,  // Longer ping timeout for iOS
+                  maxHttpBufferSize: 1e6 // Smaller buffer size for iOS
+                }),
+                extraHeaders: {
+                    'User-Agent': navigator.userAgent // Help server detect mobile clients
+                }
+            });
+            
+            // Add error logging for connection issues
+            socketInstance.on('connect_error', (err) => {
+                console.error('Socket.io connect error:', err);
+            });
+            
+            socketInstance.on('connect_timeout', () => {
+                console.error('Socket.io connect timeout');
+            });
+            
+            socketInstance.on('reconnect_attempt', (attemptNumber) => {
+                console.log(`Socket.io reconnect attempt: ${attemptNumber}`);
+            });
+            
+            socketInstance.on('reconnect_error', (err) => {
+                console.error('Socket.io reconnect error:', err);
+            });
+            
+            socketInstance.on('reconnect_failed', () => {
+                console.error('Socket.io reconnect failed');
             });
         }
         
@@ -538,7 +575,7 @@ function LobbyContent() {
                                             <div className="flex justify-center mb-4">
                                                 <div className="animate-pulse w-16 h-16 text-indigo-500">
                                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 01-2 2H5a2 2 01-2-2v-6a2 2 012-2m14 0V9a2 2 00-2-2M5 11V9a2 2 00-2-2m0 0V5a2 2 0 012-2h6a2 2 012 2v2M7 7h10" />
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 012 2v6a2 2 01-2 2H5a2 2 01-2-2v-6a2 2 012-2m14 0V9a2 2 00-2-2M5 11V9a2 2 00-2-2m0 0V5a2 2 012-2h6a2 2 012 2v2M7 7h10" />
                                                     </svg>
                                                 </div>
                                             </div>

@@ -9,12 +9,33 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+
+// Performance optimization: add compression middleware
+const compression = require('compression');
+app.use(compression());
+
+// Add caching middleware
+app.use((req, res, next) => {
+  if (req.method === 'GET') {
+    res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+  }
+  next();
+});
+
 const io = new Server(server, {
     cors: {
         origin: "*", // In production, restrict this to your frontend domain
         methods: ["GET", "POST"]
-    }
+    },
+    // Socket.io performance optimizations
+    transports: ['websocket', 'polling'],
+    pingTimeout: 60000,
+    pingInterval: 25000,
 });
+
+// Cache prompts and answer styles in memory
+let cachedPrompts = [];
+let cachedStyles = [];
 
 // Load prompts and answer styles from text files
 function loadLinesFromFile(filePath) {

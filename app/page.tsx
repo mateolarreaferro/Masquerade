@@ -68,10 +68,7 @@ export default function Home() {
                   </ol>
                 </div>
                 
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/30 dark:to-purple-900/30 p-5 rounded-xl">
-                  <h3 className="font-semibold text-lg mb-2 text-indigo-800 dark:text-indigo-200">Ready to play? Join or create a game now!</h3>
-                  
-                </div>
+                
               </div>
             </div>
             
