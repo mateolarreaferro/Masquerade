@@ -1,0 +1,16 @@
+{
+  "name": "masquerade",
+  "version": "1.0.0",
+  "description": "Masquerade game with frontend and backend",
+  "scripts": {
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build",
+    "frontend:start": "cd frontend && npm run start",
+    "backend:start": "cd backend && node server.js",
+    "dev": "concurrently \"npm run backend:start\" \"npm run frontend:dev\"",
+    "start": "concurrently \"npm run backend:start\" \"npm run frontend:start\""
+  },
+  "dependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
