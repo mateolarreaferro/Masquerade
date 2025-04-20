@@ -8,7 +8,8 @@
     "frontend:start": "cd frontend && npm run start",
     "backend:start": "cd backend && node server.js",
     "dev": "concurrently \"npm run backend:start\" \"npm run frontend:dev\"",
-    "start": "concurrently \"npm run backend:start\" \"npm run frontend:start\""
+    "start": "concurrently \"npm run backend:start\" \"npm run frontend:start\"",
+    "build": "cd frontend && npm run build"
   },
   "dependencies": {
     "concurrently": "^8.2.2"
