@@ -96,37 +96,35 @@ function LobbyContent() {
                 ? 'https://games.gabema.ga' 
                 : 'http://localhost:3001';
             
-            // Detect device type
+            // Detect device type for specific configurations
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             
             // Log connection attempt for debugging
             console.log(`Attempting to connect to ${socketUrl} from ${isIOS ? 'iOS' : isMobile ? 'Mobile' : 'Desktop'}`);
             
-            // Create Socket.IO instance with XHR polling fixes
+            // Create Socket.IO instance with optimized configuration
             socketInstance = io(socketUrl, {
-                // Use polling for all clients to ensure consistency and prevent XHR errors
                 transports: ['polling'],
                 forceNew: false,
                 reconnection: true,
                 reconnectionAttempts: 10,
-                reconnectionDelay: 2000,
-                reconnectionDelayMax: 10000,
-                timeout: 20000,
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                timeout: 30000,
                 autoConnect: true,
                 path: '/socket.io',
                 withCredentials: false,
-                // Smaller packet sizes to prevent large data errors
+                // Adjust polling parameters
                 ...(isMobile && {
-                  pingInterval: 10000, // More frequent pings for mobile
-                  pingTimeout: 30000   // Longer ping timeout for mobile
+                    pingInterval: 25000, // More frequent pings for mobile
+                    pingTimeout: 60000   // Longer ping timeout for mobile
                 }),
-                // Polling specific configurations
-                upgrade: false, // Prevent transport upgrades which can cause XHR errors
-                // Add extra headers to help identify client
-                extraHeaders: {
-                    'User-Agent': navigator.userAgent
-                }
+                ...(isIOS && {
+                    extraHeaders: {
+                        'Cache-Control': 'no-cache'  // Important for iOS
+                    }
+                })
             });
             
             // Add all error events for debugging

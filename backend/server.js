@@ -45,12 +45,12 @@ const io = new Server(server, {
         allowedHeaders: ["Content-Type", "Authorization"]
     },
     // Better Socket.IO configuration for handling polling
-    transports: ['polling', 'websocket'], // Prioritize polling to ensure compatibility
-    pingTimeout: 30000,
-    pingInterval: 10000,
+    transports: ['polling'], // Use only polling to match client configuration
+    pingTimeout: 60000,      // Increase timeout values
+    pingInterval: 25000,     // More time between pings
     upgradeTimeout: 30000,
     maxHttpBufferSize: 1e8, // 100MB
-    allowUpgrades: true,
+    allowUpgrades: false,   // Disable upgrades to match client config
     perMessageDeflate: {
         threshold: 32 * 1024 // Only compress data if message is larger than 32KB
     },
