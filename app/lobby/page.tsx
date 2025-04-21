@@ -631,7 +631,7 @@ function LobbyContent() {
     // Game interface shown after game has started
     if (isGameStarted) {
         return (
-            <div className="grid grid-rows-[auto_1fr_auto] min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
+            <div className="grid grid-rows-[auto_1fr_auto] min-h-screen bg-gradient-to-b from-slate-50/80 to-slate-100/80 dark:from-slate-900/80 dark:to-slate-800/80">
                 <header className="p-6 sm:p-8">
                     <div className="flex justify-between items-center max-w-7xl mx-auto">
                         <Link href="/" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium hover:underline flex items-center transition">
