@@ -14,20 +14,28 @@ const server = http.createServer(app);
 const compression = require('compression');
 app.use(compression());
 
-// Add CORS middleware to handle preflight requests for Socket.IO polling
+// Add more robust CORS middleware to handle preflight requests for Socket.IO
 app.use((req, res, next) => {
+  // Allow requests from any origin (in production, restrict this)
   res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
   
-  // Handle preflight OPTIONS requests
+  // Handle preflight OPTIONS requests more thoroughly
   if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Max-Age', '3600'); // Cache preflight for 1 hour
     return res.status(204).send();
   }
   
-  // Add caching for GET requests
+  // Add caching for GET requests with varied cache times based on content type
   if (req.method === 'GET') {
-    res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+    // For static assets, use a longer cache time
+    if (req.path.match(/\.(js|css|png|jpg|jpeg|gif|ico|svg)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=86400'); // 24 hours
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=3600'); // 1 hour
+    }
   }
   next();
 });
@@ -37,6 +45,15 @@ app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
 });
 
+// Add an iOS-specific ping endpoint that iOS WebKit can access if having issues with Socket.IO
+app.get('/ping', (req, res) => {
+  res.status(200).json({ 
+    pong: true, 
+    timestamp: Date.now(),
+    clientInfo: req.headers['user-agent'] 
+  });
+});
+
 const io = new Server(server, {
     cors: {
         origin: "*", // In production, restrict this to your frontend domain
@@ -44,18 +61,41 @@ const io = new Server(server, {
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"]
     },
-    // WebSocket configuration (changed from polling-only)
-    transports: ['websocket', 'polling'], // Enable websockets with polling as fallback
-    pingTimeout: 60000,      
-    pingInterval: 25000,     
-    upgradeTimeout: 30000,
-    maxHttpBufferSize: 1e8, // 100MB
-    allowUpgrades: true,   // Enable upgrades to WebSocket
-    perMessageDeflate: {
-        threshold: 32 * 1024 // Only compress data if message is larger than 32KB
+    // Enhanced WebSocket configuration for better cross-platform support
+    transports: ['polling', 'websocket'], // Start with polling, upgrade to websocket when possible
+    pingTimeout: 60000,      // Longer timeout for mobile devices
+    pingInterval: 25000,     // More frequent pings to detect disconnections
+    upgradeTimeout: 30000,   // Longer timeout for upgrading to WebSockets
+    maxHttpBufferSize: 1e8,  // 100MB
+    allowUpgrades: true,     // Enable upgrades to WebSocket
+    perMessageDeflate: {     // Configure compression better
+        threshold: 32 * 1024, // Only compress data if message is larger than 32KB
+        zlibDeflateOptions: {
+            chunkSize: 1024,
+            memLevel: 7,
+            level: 3
+        },
+        zlibInflateOptions: {
+            chunkSize: 10 * 1024
+        }
     },
     httpCompression: {
-        threshold: 1024 // Compress HTTP requests larger than 1KB
+        threshold: 1024      // Compress HTTP requests larger than 1KB
+    },
+    cookie: {
+        name: 'masquerade.io',
+        httpOnly: true,
+        sameSite: 'lax',     // Better cookie security
+        maxAge: 86400000     // 24 hours
+    },
+    // Add some additional browser-based settings for better IE, Safari, and mobile support
+    transports: ['polling', 'websocket'],
+    allowEIO3: true,         // Allow clients using older versions of engine.io
+    cors: {
+        origin: "*",
+        methods: ["GET", "POST", "OPTIONS"],
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization"]
     }
 });
 
@@ -169,8 +209,9 @@ io.on('connection', (socket) => {
             return;
         }
         
-        if (lobby.gameStarted) {
-            socket.emit('error', { message: 'Game already in progress' });
+        // Allow joining if game is in prompt or style selection phase
+        if (lobby.gameStarted && !(lobby.inPromptSelectionPhase || lobby.inStyleSelectionPhase)) {
+            socket.emit('error', { message: 'Game already in progress. You can only join between rounds.' });
             return;
         }
         
@@ -180,6 +221,19 @@ io.on('connection', (socket) => {
             isHost: false,
             score: 0 // Add score for tracking points
         };
+        
+        // Save current selectors before adding player
+        let currentPromptSelector = null;
+        let currentStyleSelector = null;
+        
+        if (lobby.gameStarted) {
+            const indices = playerSelectionIndices.get(lobbyCode);
+            if (indices) {
+                // Save the current selectors' IDs before modifying the player array
+                currentPromptSelector = lobby.players[indices.promptPlayerIndex]?.id;
+                currentStyleSelector = lobby.players[indices.stylePlayerIndex]?.id;
+            }
+        }
         
         // Add player to lobby
         lobby.players.push(player);
@@ -191,6 +245,40 @@ io.on('connection', (socket) => {
         console.log(`Player ${username} joined lobby: ${lobbyCode}`);
         socket.emit('lobbyJoined', { lobbyCode, player });
         io.to(lobbyCode).emit('playerListUpdate', { players: lobby.players });
+        
+        // If game is already in progress and in selection phase, update indices and send current game state
+        if (lobby.gameStarted) {
+            const indices = playerSelectionIndices.get(lobbyCode);
+            if (indices && currentPromptSelector && currentStyleSelector) {
+                // Update indices to point to the same players as before
+                indices.promptPlayerIndex = lobby.players.findIndex(p => p.id === currentPromptSelector);
+                indices.stylePlayerIndex = lobby.players.findIndex(p => p.id === currentStyleSelector);
+                
+                // Handle edge case where a selector might have disconnected
+                if (indices.promptPlayerIndex === -1) indices.promptPlayerIndex = 0;
+                if (indices.stylePlayerIndex === -1) indices.stylePlayerIndex = Math.min(1, lobby.players.length - 1);
+            }
+            
+            socket.emit('gameStarted');
+            
+            // Send appropriate phase information to the joining player
+            if (lobby.inPromptSelectionPhase) {
+                socket.emit('startPromptSelection', { 
+                    prompts: lobby.promptOptions,
+                    playerId: currentPromptSelector || lobby.players[0].id
+                });
+            } else if (lobby.inStyleSelectionPhase) {
+                // If prompt already selected, send that info
+                if (lobby.currentPrompt) {
+                    socket.emit('promptSelected', { prompt: lobby.currentPrompt });
+                }
+                
+                socket.emit('startStyleSelection', { 
+                    styles: lobby.styleOptions,
+                    playerId: currentStyleSelector || lobby.players[Math.min(1, lobby.players.length - 1)].id
+                });
+            }
+        }
     });
 
     // Start the game
@@ -217,11 +305,22 @@ io.on('connection', (socket) => {
         lobby.gameStarted = true;
         console.log(`Game started in lobby: ${lobbyCode}`);
         
+        // Reset the game state to ensure we start fresh
+        lobby.roundAnswers = new Map();
+        lobby.roundComplete = false;
+        lobby.inVotingPhase = false;
+        lobby.votes = new Map();
+        
+        // Initialize player selection indices if not already done
+        if (!playerSelectionIndices.has(lobbyCode)) {
+            playerSelectionIndices.set(lobbyCode, {
+                promptPlayerIndex: 0,
+                stylePlayerIndex: 1 // Start with different players for prompt and style
+            });
+        }
+        
         // Notify all players that the game has started
-        io.to(lobbyCode).emit('gameStarted', {
-            prompt: "",  // Will be filled after selection
-            answerStyle: ""
-        });
+        io.to(lobbyCode).emit('gameStarted');
         
         // Start the first round with prompt selection
         startPromptSelectionPhase(lobbyCode);

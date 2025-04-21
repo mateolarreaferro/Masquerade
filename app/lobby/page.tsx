@@ -4,7 +4,7 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Wheel from '../../components/wheel';
+import wheel from '../../components/wheel';
 import { io, Socket } from 'socket.io-client';
 
 // Define player interface
@@ -105,19 +105,29 @@ function LobbyContent() {
             
             // Create Socket.IO instance with optimized configuration
             socketInstance = io(socketUrl, {
-                transports: ['polling', 'websocket'], // Changed to start with polling and upgrade to WebSockets if possible
-                forceNew: false,
+                transports: ['websocket', 'polling'], // Try websocket first, then fallback to polling
+                forceNew: true,         // Force a new connection attempt
                 reconnection: true,
-                reconnectionAttempts: 10,
+                reconnectionAttempts: 10, // Limit reconnection attempts to prevent excessive retries
                 reconnectionDelay: 1000,
                 reconnectionDelayMax: 5000,
-                timeout: 30000,
+                timeout: 10000,         // Shorter timeout to fail faster if connection can't be established
                 autoConnect: true,
                 path: '/socket.io',
-                withCredentials: false,
-                upgrade: true,                // Ensure upgrade to WebSocket is enabled
-                rememberUpgrade: false,       // Don't remember upgrade to prevent stuck state
-                // Adjust connection parameters
+                withCredentials: true,  // Try with credentials enabled
+                
+                // Set explicit polling configuration to fix XHR errors
+                transportOptions: {
+                    polling: {
+                        extraHeaders: {
+                            'Cache-Control': 'no-cache',
+                            'Pragma': 'no-cache',
+                            'If-None-Match': 'no-match'
+                        }
+                    }
+                },
+                
+                // Adjust connection parameters for different devices
                 ...(isMobile && {
                     pingInterval: 25000, // More frequent pings for mobile
                     pingTimeout: 60000   // Longer ping timeout for mobile
@@ -132,26 +142,118 @@ function LobbyContent() {
             // Add all error events for debugging
             socketInstance.on('connect_error', (err) => {
                 console.error('Socket.io connect error:', err.message);
+                setError(`Connection error: ${err.message}. Attempting to reconnect...`);
+                
+                // Force reconnect with different transport on error
+                if (socketInstance && socketInstance.io) {
+                    console.log('Forcing reconnect with polling transport');
+                    socketInstance.io.opts.transports = ['polling'];
+                    setTimeout(() => socketInstance?.connect(), 1000);
+                }
             });
             
-            socketInstance.on('connect_timeout', () => {
-                console.error('Socket.io connect timeout');
+            socketInstance.on('connect_timeout', (timeout) => {
+                console.error('Socket.io connect timeout:', timeout);
+                setError('Connection timed out. Attempting to reconnect...');
             });
             
             socketInstance.on('reconnect_attempt', (attemptNumber) => {
-                console.log(`Socket.io reconnect attempt: ${attemptNumber}`);
+                console.log(`Socket.io reconnect attempt ${attemptNumber}`);
+                setError(`Reconnection attempt ${attemptNumber}...`);
+                
+                // Alternate between transport methods on subsequent reconnect attempts
+                if (socketInstance && socketInstance.io) {
+                    if (attemptNumber % 2 === 0) {
+                        console.log('Trying reconnect with websocket');
+                        socketInstance.io.opts.transports = ['websocket'];
+                    } else {
+                        console.log('Trying reconnect with polling');
+                        socketInstance.io.opts.transports = ['polling'];
+                    }
+                }
             });
             
             socketInstance.on('reconnect_error', (err) => {
-                console.error('Socket.io reconnect error:', err.message);
+                console.error('Socket.io reconnect error:', err);
+                setError(`Reconnection error: ${err.message}`);
             });
             
             socketInstance.on('reconnect_failed', () => {
                 console.error('Socket.io reconnect failed');
+                setError('Reconnection failed. Please refresh the page.');
+                
+                // Final attempt with long polling only after all reconnect attempts fail
+                setTimeout(() => {
+                    console.log('Final attempt: Forcing long polling mode');
+                    if (socketInstance && socketInstance.io) {
+                        socketInstance.io.opts.transportOptions = {
+                            polling: {
+                                extraHeaders: {
+                                    'Cache-Control': 'no-cache',
+                                    'Pragma': 'no-cache'
+                                }
+                            }
+                        };
+                        socketInstance.connect();
+                    }
+                }, 2000);
             });
             
             socketInstance.on('error', (err) => {
                 console.error('Socket.io general error:', err);
+                setError(`Socket error: ${err.message || 'Unknown error'}`);
+            });
+            
+            // Handle transport error specifically for xhr polling error
+            // Define interfaces for the socket engine and error types
+            interface SocketIOEngineTransportError {
+                message?: string;
+                description?: string;
+                context?: any;
+                type?: string;
+            }
+            
+            // Define a minimal EventEmitter interface with just what we need
+            interface EventEmitter {
+                on(event: string, listener: (...args: any[]) => void): any;
+                off(event: string, listener: (...args: any[]) => void): any;
+                emit(event: string, ...args: any[]): boolean;
+                removeAllListeners(event?: string): any;
+            }
+
+            interface SocketIOEngine extends EventEmitter {
+                transport: {
+                    name: string;
+                };
+                close: () => void;
+            }
+
+            socketInstance.io.engine?.on('transport_error' as any, (err: SocketIOEngineTransportError) => {
+                console.error('Transport error:', err);
+                setError('Network transport error. Trying alternative connection method...');
+                
+                // Force a new connection with a different transport
+                if (socketInstance && socketInstance.io) {
+                    const currentTransport: string = socketInstance.io.engine?.transport.name;
+                    console.log(`Current transport ${currentTransport} failed, switching...`);
+                    
+                    // Switch transport explicitly
+                    socketInstance.io.engine?.close();
+                    
+                    setTimeout(() => {
+                        if (socketInstance) {
+                            socketInstance.io.opts.transports = [currentTransport === 'polling' ? 'websocket' : 'polling'];
+                            socketInstance.connect();
+                        }
+                    }, 1000);
+                }
+            });
+            
+            // Monitor the socket state more carefully
+            socketInstance.io.on('reconnect', (attempt) => {
+                console.log(`Socket.io reconnected after ${attempt} attempts`);
+                setIsConnected(true);
+                setError('');
             });
         }
         
@@ -160,15 +262,20 @@ function LobbyContent() {
         
         const socket = socketRef.current;
         
+        // Handle successful connection
         socket.on('connect', () => {
             console.log('Connected to game server with ID:', socket.id);
             setIsConnected(true);
             setError('');
+            
+            // Log the transport being used
+            console.log('Transport being used:', socket.io.engine?.transport.name);
         });
         
         socket.on('disconnect', () => {
             console.log('Disconnected from game server');
             setIsConnected(false);
+            setError('Disconnected from server. Attempting to reconnect...');
         });
         
         socket.on('connect_error', (err) => {
@@ -201,15 +308,18 @@ function LobbyContent() {
             setError(message);
         });
         
-        socket.on('gameStarted', ({ prompt, answerStyle }) => {
-            console.log('Game started with prompt:', prompt, 'and style:', answerStyle);
+        socket.on('gameStarted', () => {
+            console.log('Game started');
             setIsGameStarted(true);
-            setCurrentPrompt(prompt);
-            setCurrentAnswerStyle(answerStyle);
+            // The prompt and style will be set later in the prompt/style selection phases
+            setCurrentPrompt('');
+            setCurrentAnswerStyle('');
             setHasSubmittedAnswer(false);
             setUserAnswer('');
             setAllAnswers([]);
             setShowAnswers(false);
+            setIsVotingPhase(false);
+            setIsResultsPhase(false);
         });
 
         socket.on('answerReceived', () => {
@@ -372,6 +482,9 @@ function LobbyContent() {
             socket.off('styleSelected');
             socket.off('roundSetup');
             // We're not disconnecting the socket here to allow persistence between page navigations
+            
+            // Add cleanup for engine-level listeners too
+            socket.io.engine?.removeAllListeners('transport_error' as any);
         };
     }, []);
 
@@ -979,8 +1092,20 @@ function LobbyContent() {
                     {!isInLobby ? (
                         <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700">
                             {error && (
-                                <div className="mb-5 p-4 bg-red-50 dark:bg-red-900/40 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-lg">
-                                    {error}
+                                <div className={`mb-5 p-4 border rounded-lg ${
+                                    error.includes('can only join between rounds') 
+                                    ? 'bg-amber-50 dark:bg-amber-900/40 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300' 
+                                    : 'bg-red-50 dark:bg-red-900/40 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                                }`}>
+                                    {error.includes('can only join between rounds') ? (
+                                        <>
+                                            <h3 className="font-medium mb-1">Game in Progress</h3>
+                                            <p>You can join this game when the current round finishes and players are selecting a new prompt.</p>
+                                            <p className="text-sm mt-2">Try again in a moment!</p>
+                                        </>
+                                    ) : (
+                                        error
+                                    )}
                                 </div>
                             )}
                             
@@ -1037,6 +1162,10 @@ function LobbyContent() {
                                           </svg> Join Lobby</>
                                     }
                                 </button>
+                                
+                                <div className="mt-2 text-sm text-center text-slate-600 dark:text-slate-400">
+                                    <p>You can now join games that are in between rounds!</p>
+                                </div>
                                 
                                 {mode === 'create' ? (
                                     <div className="text-center pt-4">

@@ -6,7 +6,7 @@ import { io } from 'socket.io-client';
 // Create a socket instance outside the component to avoid reconnections on re-renders
 let socket;
 
-const Wheel = () => {
+const wheel = () => {
     const [result, setResult] = useState(null);
     const [isSpinning, setIsSpinning] = useState(false);
     const [error, setError] = useState(null);
@@ -18,22 +18,49 @@ const Wheel = () => {
                 ? 'https://games.gabema.ga' 
                 : 'http://localhost:3001';
                 
+            // Create a new socket connection with improved configuration
             socket = io(socketUrl, {
-                transports: ['polling', 'websocket'], // Changed to start with polling then upgrade
+                transports: ['polling', 'websocket'], // Try polling first, then upgrade
+                forceNew: true,               // Force a new connection
                 reconnection: true,
-                reconnectionAttempts: 5,
-                timeout: 20000,
+                reconnectionAttempts: Infinity, // Keep trying to reconnect
+                reconnectionDelay: 1000,
+                reconnectionDelayMax: 5000,
+                timeout: 60000,               // Longer timeout for initial connection
+                autoConnect: true,
                 upgrade: true,
-                rememberUpgrade: false
+                rememberUpgrade: false,
+                perMessageDeflate: false,     // Disable compression which can cause issues
+                rejectUnauthorized: false     // Handle SSL issues in some environments
             });
             
+            // Add more event handlers for better debugging
             socket.on('connect', () => {
-                console.log('Connected to Socket.IO server');
+                console.log('Wheel: Connected to Socket.IO server');
+                setError(null);
             });
             
             socket.on('connect_error', (err) => {
-                console.error('Socket connection error:', err);
+                console.error('Wheel: Socket connection error:', err);
                 setError('Failed to connect to game server');
+            });
+            
+            socket.on('reconnect_attempt', (attemptNumber) => {
+                console.log(`Wheel: Socket.io reconnect attempt ${attemptNumber}`);
+            });
+            
+            socket.on('reconnect_error', (err) => {
+                console.error('Wheel: Socket.io reconnect error:', err);
+            });
+            
+            socket.on('reconnect_failed', () => {
+                console.error('Wheel: Socket.io reconnect failed');
+                // Try different approach after max reconnect attempts
+                setTimeout(() => {
+                    console.log('Wheel: Trying forced reconnect with different config');
+                    socket.io.opts.transports = ['polling'];
+                    socket.connect();
+                }, 2000);
             });
         }
         
@@ -46,16 +73,21 @@ const Wheel = () => {
         // Clean up on component unmount
         return () => {
             socket.off('spinResult');
+            socket.off('reconnect_attempt');
+            socket.off('reconnect_error');
+            socket.off('reconnect_failed');
         };
     }, []);
 
     const handleSpin = () => {
         if (!socket.connected) {
-            setError('Not connected to server');
+            setError('Not connected to server. Trying to reconnect...');
+            socket.connect();
             return;
         }
         
         setIsSpinning(true);
+        setError(null);
         socket.emit('spin', { timestamp: Date.now() });
     };
 
@@ -98,4 +130,4 @@ const Wheel = () => {
     );
 };
 
-export default Wheel;
+export default wheel;
