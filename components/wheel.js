@@ -19,10 +19,12 @@ const Wheel = () => {
                 : 'http://localhost:3001';
                 
             socket = io(socketUrl, {
-                transports: ['websocket', 'polling'], // Use WebSockets with polling fallback
+                transports: ['polling', 'websocket'], // Changed to start with polling then upgrade
                 reconnection: true,
                 reconnectionAttempts: 5,
-                timeout: 20000
+                timeout: 20000,
+                upgrade: true,
+                rememberUpgrade: false
             });
             
             socket.on('connect', () => {
