@@ -14,7 +14,16 @@ const Wheel = () => {
     useEffect(() => {
         // Initialize socket connection if it doesn't exist
         if (!socket) {
-            socket = io('http://localhost:3001');
+            const socketUrl = process.env.NODE_ENV === 'production' 
+                ? 'https://games.gabema.ga' 
+                : 'http://localhost:3001';
+                
+            socket = io(socketUrl, {
+                transports: ['websocket', 'polling'], // Use WebSockets with polling fallback
+                reconnection: true,
+                reconnectionAttempts: 5,
+                timeout: 20000
+            });
             
             socket.on('connect', () => {
                 console.log('Connected to Socket.IO server');
@@ -38,105 +47,51 @@ const Wheel = () => {
         };
     }, []);
 
-    const spinWheel = () => {
+    const handleSpin = () => {
+        if (!socket.connected) {
+            setError('Not connected to server');
+            return;
+        }
+        
         setIsSpinning(true);
-        socket.emit('spin', { action: 'spin' });
+        socket.emit('spin', { timestamp: Date.now() });
     };
 
     return (
-        <div className="wheel-container">
-            {error && <div className="error-message">{error}</div>}
+        <div className="wheel-container p-6 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 text-center">
+            <h2 className="text-2xl font-bold mb-4 text-slate-800 dark:text-slate-200">The Lucky Wheel</h2>
             
-            <div className="wheel" style={{ opacity: isSpinning ? 0.7 : 1 }}>
-                {/* Visual representation of wheel could be added here */}
-                <div className="wheel-center">
-                    {isSpinning ? (
-                        <div className="spinning-text">Spinning...</div>
-                    ) : result ? (
-                        <div className="result">{result}</div>
-                    ) : (
-                        <div className="instruction">Press Spin</div>
-                    )}
+            <div className="wheel-display mb-6 relative">
+                <div className={`wheel h-40 w-40 rounded-full mx-auto border-8 border-amber-500 ${isSpinning ? 'animate-spin' : ''}`}
+                    style={{backgroundImage: 'conic-gradient(from 0deg, red, orange, yellow, green, blue, indigo, violet, red)'}}>
                 </div>
+                
+                {result !== null && !isSpinning && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="bg-white dark:bg-slate-900 rounded-full h-20 w-20 flex items-center justify-center shadow-lg border-4 border-amber-500">
+                            <span className="text-3xl font-bold text-amber-600">{result}</span>
+                        </div>
+                    </div>
+                )}
             </div>
-
-            <button 
-                onClick={spinWheel} 
+            
+            {error && (
+                <div className="error-message mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300 rounded-md">
+                    {error}
+                </div>
+            )}
+            
+            <button
+                onClick={handleSpin}
                 disabled={isSpinning}
-                className="spin-button"
+                className={`px-6 py-3 rounded-lg font-medium transition-colors ${
+                    isSpinning
+                    ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                    : 'bg-amber-500 hover:bg-amber-600 text-white shadow-md hover:shadow-lg'
+                }`}
             >
                 {isSpinning ? 'Spinning...' : 'Spin the Wheel'}
             </button>
-            
-            <style jsx>{`
-                .wheel-container {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    margin: 20px 0;
-                }
-                
-                .wheel {
-                    width: 200px;
-                    height: 200px;
-                    border-radius: 50%;
-                    background: conic-gradient(
-                        #FF5733, #33FF57, #3357FF, #F333FF,
-                        #FF5733, #33FF57, #3357FF, #F333FF
-                    );
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    position: relative;
-                    margin-bottom: 20px;
-                    transition: transform 3s ease-out;
-                }
-                
-                .wheel-center {
-                    width: 80px;
-                    height: 80px;
-                    background: white;
-                    border-radius: 50%;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    z-index: 2;
-                    font-weight: bold;
-                }
-                
-                .spin-button {
-                    padding: 10px 20px;
-                    background-color: #4CAF50;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                    font-size: 16px;
-                    transition: background-color 0.3s;
-                }
-                
-                .spin-button:hover:not(:disabled) {
-                    background-color: #3e8e41;
-                }
-                
-                .spin-button:disabled {
-                    background-color: #cccccc;
-                    cursor: not-allowed;
-                }
-                
-                .error-message {
-                    color: #ff0000;
-                    margin-bottom: 10px;
-                }
-                
-                .result {
-                    font-size: 24px;
-                }
-                
-                .spinning-text {
-                    font-size: 14px;
-                }
-            `}</style>
         </div>
     );
 };

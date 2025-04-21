@@ -44,13 +44,13 @@ const io = new Server(server, {
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"]
     },
-    // Better Socket.IO configuration for handling polling
-    transports: ['polling'], // Use only polling to match client configuration
-    pingTimeout: 60000,      // Increase timeout values
-    pingInterval: 25000,     // More time between pings
+    // WebSocket configuration (changed from polling-only)
+    transports: ['websocket', 'polling'], // Enable websockets with polling as fallback
+    pingTimeout: 60000,      
+    pingInterval: 25000,     
     upgradeTimeout: 30000,
     maxHttpBufferSize: 1e8, // 100MB
-    allowUpgrades: false,   // Disable upgrades to match client config
+    allowUpgrades: true,   // Enable upgrades to WebSocket
     perMessageDeflate: {
         threshold: 32 * 1024 // Only compress data if message is larger than 32KB
     },

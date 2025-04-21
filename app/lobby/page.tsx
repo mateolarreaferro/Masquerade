@@ -105,7 +105,7 @@ function LobbyContent() {
             
             // Create Socket.IO instance with optimized configuration
             socketInstance = io(socketUrl, {
-                transports: ['polling'],
+                transports: ['websocket', 'polling'], // Changed to prefer WebSockets with polling fallback
                 forceNew: false,
                 reconnection: true,
                 reconnectionAttempts: 10,
@@ -115,7 +115,7 @@ function LobbyContent() {
                 autoConnect: true,
                 path: '/socket.io',
                 withCredentials: false,
-                // Adjust polling parameters
+                // Adjust connection parameters
                 ...(isMobile && {
                     pingInterval: 25000, // More frequent pings for mobile
                     pingTimeout: 60000   // Longer ping timeout for mobile
