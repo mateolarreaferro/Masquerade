@@ -4,7 +4,6 @@
 import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import wheel from '../../components/wheel';
 import { io, Socket } from 'socket.io-client';
 
 // Define player interface

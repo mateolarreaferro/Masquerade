@@ -8,10 +8,15 @@ export default function Home() {
         <main className="flex flex-col items-center">
           {/* Header Section */}
           <div className="text-center mb-12">
-            
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 inline-block text-transparent bg-clip-text">
-              masquerade
-            </h1>
+            <div className="mb-6 flex justify-center">
+              <Image 
+                src="/images/masquerade-logo1.png" 
+                alt="Masquerade Logo" 
+                width={180} 
+                height={120} 
+                className="dark:invert" 
+              />
+            </div>
             <p className="text-xl sm:text-2xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">
               a game where you unmask your friends' true identities
             </p>
@@ -73,14 +78,22 @@ export default function Home() {
             </div>
             
             <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 sm:p-8 text-center">
-              <p className="text-white font-medium text-lg sm:text-xl">Ready to play? Join or create a game now!</p>
+              <div className="flex justify-center">
+                <Image 
+                  src="/images/masquerade-logo2.png" 
+                  alt="Masquerade Logo 2" 
+                  width={180} 
+                  height={60} 
+                  className="dark:invert" 
+                />
+              </div>
             </div>
           </div>
         </main>
         
         <footer className="text-center">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Masquerade Game | An interactive party game for friends
+          Masquerade Game  |  Made in CS247G by Gabe Magaña, Mateo Larrea Ferro, Karina Chen, and Maimuna Muntaha
           </p>
         </footer>
       </div>
