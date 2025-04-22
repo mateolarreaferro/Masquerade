@@ -56,7 +56,7 @@ app.get('/ping', (req, res) => {
 
 const io = new Server(server, {
     cors: {
-        origin: "*", // In production, restrict this to your frontend domain
+        origin: "*", // Allows connections from any origin, including local IPs
         methods: ["GET", "POST", "OPTIONS"],
         credentials: true,
         allowedHeaders: ["Content-Type", "Authorization"]
@@ -82,21 +82,7 @@ const io = new Server(server, {
     httpCompression: {
         threshold: 1024      // Compress HTTP requests larger than 1KB
     },
-    cookie: {
-        name: 'masquerade.io',
-        httpOnly: true,
-        sameSite: 'lax',     // Better cookie security
-        maxAge: 86400000     // 24 hours
-    },
-    // Add some additional browser-based settings for better IE, Safari, and mobile support
-    transports: ['polling', 'websocket'],
     allowEIO3: true,         // Allow clients using older versions of engine.io
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST", "OPTIONS"],
-        credentials: true,
-        allowedHeaders: ["Content-Type", "Authorization"]
-    }
 });
 
 // Cache prompts and answer styles in memory
@@ -706,7 +692,9 @@ function updatePlayerSelectionIndices(lobbyCode) {
 }
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`Access locally via: http://localhost:${PORT}`);
+    console.log(`Access on local network via: http://<your-local-ip>:${PORT}`);
     console.log(`Loaded ${prompts.length} prompts and ${answerStyles.length} answer styles`);
-});
+ });
