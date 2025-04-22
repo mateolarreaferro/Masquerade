@@ -1,5 +1,5 @@
 // app/components/SoundLink.tsx
-'use client'; // Add this directive for client-side hooks
+'use client'; 
 
 import React from 'react';
 import Link, { LinkProps } from 'next/link'; // Import LinkProps
@@ -33,7 +33,6 @@ const SoundLink: React.FC<SoundLinkProps> = ({ children, href, className, onClic
       className={className}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
-       // onMouseLeave={stopHover} // Optional
       {...props} // Pass down any other props
     >
       {children}

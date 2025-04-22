@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
 import SoundButton from '../components/SoundButton'; 
 import SoundLink from '../components/SoundLink'; 
+import useSound from 'use-sound';
+
 
 // Define player interface
 interface Player {
@@ -86,6 +88,8 @@ function LobbyContent() {
     
     // Use useRef to keep track of the socket instance within the component
     const socketRef = useRef<Socket | null>(null);
+
+    const [playCompletedSound] = useSound('/audio/Completed.wav'); 
 
     // Initialize socket connection
     useEffect(() => {
@@ -621,6 +625,7 @@ function LobbyContent() {
         
         if (socketRef.current && socketRef.current.connected) {
             socketRef.current.emit('submitVotes', { votes: userVotes });
+            playCompletedSound();
             setHasSubmittedVotes(true); // Mark votes as submitted immediately
             setError(''); // Clear any error
         } else {
@@ -805,7 +810,7 @@ function LobbyContent() {
                                         </div>
                                     )}
                                     
-                                    <SoundButton
+                                    <button
                                         type="submit"
                                         className="w-full py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 flex items-center justify-center"
                                     >
@@ -813,7 +818,7 @@ function LobbyContent() {
                                             <path fillRule="evenodd" d="M16.707 5.293a1 1 010 1.414l-8 8a1 1 01-1.414 0l-4-4a1 1 011.414-1.414L7.414 9H15a1 1 110 2H7.414l2.293 2.293a1 1 010 1.414z" clipRule="evenodd" />
                                         </svg>
                                         Submit Answer
-                                    </SoundButton>
+                                    </button>
                                 </form>
                             ) : !isPromptSelectionPhase && !isStyleSelectionPhase && !showAnswers && !isVotingPhase ? (
                                 <div className="mb-8">

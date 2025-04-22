@@ -33,7 +33,6 @@ const SoundButton: React.FC<SoundButtonProps> = ({ children, onClick, className,
       className={className}
       onClick={handleClick}
       onMouseEnter={handleMouseEnter}
-      // onMouseLeave={stopHover} // Optional: Stop hover sound if it's long or annoying
       disabled={disabled}
       {...props} // Pass down any other props (like type="submit")
     >
