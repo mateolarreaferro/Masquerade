@@ -1,7 +1,25 @@
+'use client';
+import { useEffect } from 'react'; 
+import useSound from 'use-sound'; 
+import SoundLink from './components/SoundLink';
 import Image from "next/image";
-import Link from "next/link";
 
 export default function Home() {
+  // Add these lines for lobby music
+  const [playLobbyMusic, { stop: stopLobbyMusic }] = useSound(
+    '/audio/LobbyMusic.wav',
+    {
+      loop: true, 
+      volume: 0.7, 
+    }
+  );
+
+  useEffect(() => {
+    playLobbyMusic(); 
+    return () => {
+      stopLobbyMusic();
+    };
+  }, [playLobbyMusic, stopLobbyMusic]); 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
@@ -26,7 +44,7 @@ export default function Home() {
           <div className="w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-xl mb-16 overflow-hidden">
             <div className="p-8 sm:p-10">
               <div className="flex flex-col sm:flex-row gap-4 mb-8">
-                <Link
+                <SoundLink
                   className="flex-1 py-4 px-6 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition duration-300 text-center flex items-center justify-center"
                   href="/lobby?mode=create"
                 >
@@ -34,8 +52,8 @@ export default function Home() {
                     <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
                   </svg>
                   Create Lobby
-                </Link>
-                <Link
+                  </SoundLink>
+                <SoundLink
                   className="flex-1 py-4 px-6 bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 font-medium rounded-xl shadow-md border border-slate-200 dark:border-slate-600 hover:shadow-lg hover:bg-slate-50 dark:hover:bg-slate-600 transition duration-300 text-center flex items-center justify-center"
                   
                   href="/lobby?mode=join"
@@ -44,7 +62,7 @@ export default function Home() {
                     <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
                   </svg>
                   Join Lobby
-                </Link>
+                  </SoundLink>
               </div>
               
               <div className="space-y-8">

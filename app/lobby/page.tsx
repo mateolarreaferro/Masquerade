@@ -5,6 +5,8 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { io, Socket } from 'socket.io-client';
+import SoundButton from '../components/SoundButton'; 
+import SoundLink from '../components/SoundLink'; 
 
 // Define player interface
 interface Player {
@@ -634,12 +636,12 @@ function LobbyContent() {
             <div className="grid grid-rows-[auto_1fr_auto] min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
                 <header className="p-6 sm:p-8">
                     <div className="flex justify-between items-center max-w-7xl mx-auto">
-                        <Link href="/" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium hover:underline flex items-center transition">
+                        <SoundLink href="/" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium hover:underline flex items-center transition">
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M9.707 14.707a1 1 01-1.414 0l-4-4a1 1 010-1.414l4-4a1 1 011.414 1.414L7.414 9H15a1 1 110 2H7.414l2.293 2.293a1 1 010 1.414z" clipRule="evenodd" />
                             </svg>
                             Leave Game
-                        </Link>
+                        </SoundLink>
                         <div className="bg-white dark:bg-slate-700 shadow-sm px-4 py-2 rounded-full text-sm font-medium text-indigo-800 dark:text-indigo-200 border border-indigo-100 dark:border-indigo-800">
                             Lobby: {lobbyCode}
                         </div>
@@ -667,7 +669,7 @@ function LobbyContent() {
                                                 Select one of the prompts below:
                                             </p>
                                             {promptOptions.map((prompt, index) => (
-                                                <button
+                                                <SoundButton
                                                     key={index}
                                                     className={`w-full p-4 text-left text-lg rounded-lg border transition-all ${
                                                         selectedPrompt === prompt 
@@ -677,11 +679,11 @@ function LobbyContent() {
                                                     onClick={() => setSelectedPrompt(prompt)}
                                                 >
                                                     {prompt}
-                                                </button>
+                                                </SoundButton>
                                             ))}
                                             
                                             {selectedPrompt && (
-                                                <button
+                                                <SoundButton
                                                     className="w-full mt-6 py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 flex items-center justify-center"
                                                     onClick={() => {
                                                         if (socketRef.current && socketRef.current.connected) {
@@ -690,7 +692,7 @@ function LobbyContent() {
                                                     }}
                                                 >
                                                     Confirm Selection
-                                                </button>
+                                                </SoundButton>
                                             )}
                                         </div>
                                     ) : (
@@ -723,7 +725,7 @@ function LobbyContent() {
                                                 Select one of the answer styles below:
                                             </p>
                                             {styleOptions.map((style, index) => (
-                                                <button
+                                                <SoundButton
                                                     key={index}
                                                     className={`w-full p-4 text-left text-lg rounded-lg border transition-all ${
                                                         selectedStyle === style 
@@ -733,11 +735,11 @@ function LobbyContent() {
                                                     onClick={() => setSelectedStyle(style)}
                                                 >
                                                     {style}
-                                                </button>
+                                                </SoundButton>
                                             ))}
                                             
                                             {selectedStyle && (
-                                                <button
+                                                <SoundButton
                                                     className="w-full mt-6 py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 flex items-center justify-center"
                                                     onClick={() => {
                                                         if (socketRef.current && socketRef.current.connected) {
@@ -746,7 +748,7 @@ function LobbyContent() {
                                                     }}
                                                 >
                                                     Confirm Selection
-                                                </button>
+                                                </SoundButton>
                                             )}
                                         </div>
                                     ) : (
@@ -803,7 +805,7 @@ function LobbyContent() {
                                         </div>
                                     )}
                                     
-                                    <button
+                                    <SoundButton
                                         type="submit"
                                         className="w-full py-3 px-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 flex items-center justify-center"
                                     >
@@ -811,7 +813,7 @@ function LobbyContent() {
                                             <path fillRule="evenodd" d="M16.707 5.293a1 1 010 1.414l-8 8a1 1 01-1.414 0l-4-4a1 1 011.414-1.414L7.414 9H15a1 1 110 2H7.414l2.293 2.293a1 1 010 1.414z" clipRule="evenodd" />
                                         </svg>
                                         Submit Answer
-                                    </button>
+                                    </SoundButton>
                                 </form>
                             ) : !isPromptSelectionPhase && !isStyleSelectionPhase && !showAnswers && !isVotingPhase ? (
                                 <div className="mb-8">
@@ -889,7 +891,7 @@ function LobbyContent() {
                                                 </div>
                                             )}
                                             
-                                            <button
+                                            <SoundButton
                                                 type="submit"
                                                 className="w-full py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg transition duration-300 flex items-center justify-center"
                                                 disabled={userVotes.length !== answersForVoting.filter(a => a.answerId !== currentPlayer?.id).length} // Only count other players' answers
@@ -898,7 +900,7 @@ function LobbyContent() {
                                                     <path fillRule="evenodd" d="M16.707 5.293a1 1 010 1.414l-8 8a1 1 01-1.414 0l-4-4a1 1 011.414-1.414L7.414 9H15a1 1 110 2H7.414l2.293 2.293a1 1 010 1.414z" clipRule="evenodd" />
                                                 </svg>
                                                 Submit Votes ({userVotes.length}/{answersForVoting.filter(a => a.answerId !== currentPlayer?.id).length})
-                                            </button>
+                                            </SoundButton>
                                         </form>
                                     ) : (
                                         <div>
@@ -1011,7 +1013,7 @@ function LobbyContent() {
                                     </ul>
 
                                     {isHost && (
-                                        <button
+                                        <SoundButton
                                             onClick={handleNextRound}
                                             className="w-full mt-6 py-3 px-4 bg-gradient-to-r from-indigo-500 to-blue-600 hover:from-indigo-600 hover:to-blue-700 text-white font-medium rounded-lg shadow-md hover:shadow-lg flex items-center justify-center transition duration-300"
                                         >
@@ -1019,7 +1021,7 @@ function LobbyContent() {
                                                 <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 010 1.414l-4 4a1 1 01-1.414-1.414L7.414 9H15a1 1 110 2H7.414l2.293 2.293a1 1 010 1.414z" clipRule="evenodd" />
                                             </svg>
                                             Start Next Round
-                                        </button>
+                                        </SoundButton>
                                     )}
                                 </div>
                             )}
@@ -1062,12 +1064,12 @@ function LobbyContent() {
         <div className="grid grid-rows-[auto_1fr_auto] min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
             <header className="p-6 sm:p-8">
                 <div className="flex justify-between items-center max-w-7xl mx-auto">
-                    <Link href="/" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium hover:underline flex items-center transition">
+                    <SoundLink href="/" className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium hover:underline flex items-center transition">
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M9.707 14.707a1 1 01-1.414 0l-4-4a1 1 010-1.414l4-4a1 1 011.414 1.414L7.414 9H15a1 1 110 2H7.414l2.293 2.293a1 1 010 1.414z" clipRule="evenodd" />
                         </svg>
                         Back to Home
-                    </Link>
+                    </SoundLink>
                     {isConnected ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                             <span className="h-2 w-2 rounded-full bg-green-500 mr-1.5"></span>
@@ -1142,7 +1144,7 @@ function LobbyContent() {
                                     </div>
                                 )}
 
-                                <button
+                                <SoundButton
                                     type="submit"
                                     className={`w-full py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-lg shadow-md flex items-center justify-center transition duration-300 ${
                                         isConnected 
@@ -1160,7 +1162,7 @@ function LobbyContent() {
                                             <path fillRule="evenodd" d="M3 14a1 1 011-1h12a1 1 110 2H4a1 1 01-1-1z" clipRule="evenodd" />
                                           </svg> Join Lobby</>
                                     }
-                                </button>
+                                </SoundButton>
                                 
                                 <div className="mt-2 text-sm text-center text-slate-600 dark:text-slate-400">
                                     <p>You can now join games that are in between rounds!</p>
@@ -1168,21 +1170,21 @@ function LobbyContent() {
                                 
                                 {mode === 'create' ? (
                                     <div className="text-center pt-4">
-                                        <Link 
+                                        <SoundLink 
                                             href="?mode=join" 
                                             className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium hover:underline"
                                         >
                                             Already have a code? Join an existing lobby
-                                        </Link>
+                                        </SoundLink>
                                     </div>
                                 ) : (
                                     <div className="text-center pt-4">
-                                        <Link 
+                                        <SoundLink 
                                             href="?mode=create" 
                                             className="text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium hover:underline"
                                         >
                                             Want to host? Create a new lobby
-                                        </Link>
+                                        </SoundLink>
                                     </div>
                                 )}
                             </form>
@@ -1216,7 +1218,7 @@ function LobbyContent() {
                             </div>
                             
                             {isHost && (
-                                <button
+                                <SoundButton
                                     className={`w-full py-2 px-4 font-medium rounded-md transition duration-300 ${
                                         players.length < 2 
                                             ? 'bg-gray-400 cursor-not-allowed' 
@@ -1226,7 +1228,7 @@ function LobbyContent() {
                                     disabled={players.length < 2}
                                 >
                                     {players.length < 2 ? 'Need at least 2 players' : 'Start Game'}
-                                </button>
+                                </SoundButton>
                             )}
                         </div>
                     )}
