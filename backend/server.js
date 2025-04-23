@@ -691,10 +691,34 @@ function updatePlayerSelectionIndices(lobbyCode) {
     }
 }
 
+// Function to display all available network interfaces for easier debugging
+function displayNetworkInterfaces() {
+    const os = require('os');
+    const networkInterfaces = os.networkInterfaces();
+    console.log('\nAvailable Network Interfaces:');
+    console.log('-----------------------------');
+    
+    // Loop through all network interfaces
+    for (const interfaceName in networkInterfaces) {
+        const interfaces = networkInterfaces[interfaceName];
+        
+        // Loop through each interface configuration
+        interfaces.forEach((iface) => {
+            // Skip internal interfaces and IPv6
+            if (!iface.internal && iface.family === 'IPv4') {
+                console.log(`Interface: ${interfaceName}`);
+                console.log(`IP Address: http://${iface.address}:${PORT}`);
+                console.log('-----------------------------');
+            }
+        });
+    }
+    console.log('');
+}
+
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Access locally via: http://localhost:${PORT}`);
-    console.log(`Access on local network via: http://<your-local-ip>:${PORT}`);
+    displayNetworkInterfaces();
     console.log(`Loaded ${prompts.length} prompts and ${answerStyles.length} answer styles`);
- });
+});

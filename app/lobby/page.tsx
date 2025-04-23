@@ -96,10 +96,20 @@ function LobbyContent() {
         // Create a singleton socket instance if it doesn't exist
         if (!socketInstance) {
             console.log("Creating new socket instance");
-            // Use the domain name for production, localhost for development
+            
+            // Get the current hostname and use it for development connections
+            // This allows connections from other devices on the same network
+            const currentHost = window.location.hostname;
+            
+            
+            // Allow localhost connection for development
+            // For local dev, use localhost; for other dev environments, use the current hostname
+            const useLocalhost = currentHost === 'localhost' || currentHost === '127.0.0.1';
             const socketUrl = process.env.NODE_ENV === 'production' 
                 ? 'https://games.gabema.ga' 
-                : 'http://localhost:3001';
+                : useLocalhost 
+                  ? `http://localhost:3000` 
+                  : `http://${currentHost}:3000`;
             
             // Detect device type for specific configurations
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
