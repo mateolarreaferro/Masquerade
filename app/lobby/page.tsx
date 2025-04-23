@@ -105,7 +105,7 @@ function LobbyContent() {
             // Using port 80 (standard HTTP port) which should pass through most firewalls
             const socketUrl = process.env.NODE_ENV === 'production' 
                 ? 'https://games.gabema.ga' 
-                : `http://${currentHost}:80`;
+                : `http://${currentHost}:3000`;
             
             // Detect device type for specific configurations
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
