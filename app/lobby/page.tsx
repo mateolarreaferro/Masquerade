@@ -104,12 +104,8 @@ function LobbyContent() {
             
             // Allow localhost connection for development
             // For local dev, use localhost; for other dev environments, use the current hostname
-            const useLocalhost = currentHost === 'localhost' || currentHost === '127.0.0.1';
-            const socketUrl = process.env.NODE_ENV === 'production' 
-                ? 'https://games.gabema.ga' 
-                : useLocalhost 
-                  ? `http://localhost:3000` 
-                  : `http://${currentHost}:3000`;
+            //const useLocalhost = currentHost === 'localhost' || currentHost === '127.0.0.1';
+            const socketUrl = 'games.gabema.ga'
             
             // Detect device type for specific configurations
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
