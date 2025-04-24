@@ -57,10 +57,10 @@ export default function Home() {
               
               <div className="space-y-8">
                 <div>
-                  <h2 className="text-2xl font-bold mb-4 text-slate-800 dark:text-slate-200 flex items-center">
-                    <span className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 w-8 h-8 rounded-full flex items-center justify-center mr-3 text-sm font-bold">?</span>
+                <h2 className="text-2xl font-bold mb-4 text-slate-800 dark:text-slate-200 text-center">
                     How to Play
                   </h2>
+
                   <ol className="space-y-4 pl-4">
                     <li className="flex items-start">
                       <span className="bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 w-6 h-6 rounded-full flex items-center justify-center mr-3 text-sm font-bold mt-0.5">1</span>
