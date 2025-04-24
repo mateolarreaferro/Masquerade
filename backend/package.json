@@ -5,7 +5,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js",
-    "start:dev": "cd .. && next build && node backend/server.js"
+    "start:dev": "cd .. && next build && node backend/server.js",
+    "start:container": "cd .. && mkdir -p out && cp -r public/* out/ && node backend/server.js",
+    "build:container": "cd .. && cp -r public out/"
   },
   "keywords": [],
   "author": "",

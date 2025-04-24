@@ -76,8 +76,75 @@ app.use((req, res, next) => {
 
 // Serve static files from the Next.js output directory and public folder
 const frontendPath = path.join(__dirname, '../out'); // Changed from ../next to ../out for static export
-app.use(express.static(frontendPath));
-app.use(express.static(path.join(__dirname, '../public')));
+const publicPath = path.join(__dirname, '../public');
+
+// Initialize directories if they don't exist (important for container environment)
+try {
+  if (!fs.existsSync(frontendPath)) {
+    fs.mkdirSync(frontendPath, { recursive: true });
+    console.log('Created output directory:', frontendPath);
+  }
+  
+  // If running in container, copy public files to out directory if needed
+  if (process.env.CONTAINER_ENV === 'true' && fs.existsSync(publicPath)) {
+    const publicFiles = fs.readdirSync(publicPath);
+    if (publicFiles.length > 0) {
+      console.log('Copying public files to output directory...');
+      publicFiles.forEach(file => {
+        const sourcePath = path.join(publicPath, file);
+        const destPath = path.join(frontendPath, file);
+        if (fs.statSync(sourcePath).isDirectory()) {
+          // For directories, use recursive copy
+          if (!fs.existsSync(destPath)) {
+            fs.mkdirSync(destPath, { recursive: true });
+          }
+          copyDir(sourcePath, destPath);
+        } else {
+          fs.copyFileSync(sourcePath, destPath);
+        }
+      });
+      console.log('Public files copied successfully to output directory');
+    }
+  }
+} catch (err) {
+  console.warn('Warning: Error handling static directories:', err.message);
+}
+
+// Helper function to copy directories recursively
+function copyDir(src, dest) {
+  try {
+    const entries = fs.readdirSync(src);
+    entries.forEach(entry => {
+      const srcPath = path.join(src, entry);
+      const destPath = path.join(dest, entry);
+      
+      if (fs.statSync(srcPath).isDirectory()) {
+        if (!fs.existsSync(destPath)) {
+          fs.mkdirSync(destPath, { recursive: true });
+        }
+        copyDir(srcPath, destPath);
+      } else {
+        fs.copyFileSync(srcPath, destPath);
+      }
+    });
+  } catch (err) {
+    console.error('Error copying directory:', err);
+  }
+}
+
+// Serve static files with proper error handling
+app.use(express.static(frontendPath, {
+  fallthrough: true,
+  // Handle errors in static file serving
+  setHeaders: (res, filePath) => {
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+  }
+}));
+
+// Only serve from public directory as fallback
+app.use(express.static(publicPath, {
+  fallthrough: true
+}));
 
 // Add route for health check and to verify server is running
 app.get('/health', (req, res) => {
