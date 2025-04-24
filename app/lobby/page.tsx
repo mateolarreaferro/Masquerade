@@ -104,10 +104,10 @@ function LobbyContent() {
             
             // Configure socket URL based on environment
             const socketUrl = isProd 
-                ? `https://games.gabema.ga`  // Production with reverse proxy (no port needed)
+                ? `https://${window.location.host}`  // Production with current host and protocol
                 : currentHost === 'localhost' || /\d+\.\d+\.\d+\.\d+/.test(currentHost)
                     ? `http://${currentHost}:3001`  // Local development
-                    : `https://games.gabema.ga`;    // Default to production
+                    : `https://${window.location.host}`;    // Default to current host
             
             console.log(`Using Socket.IO server URL: ${socketUrl}`);
             

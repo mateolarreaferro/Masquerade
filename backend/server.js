@@ -23,8 +23,8 @@ const io = new Server(server, {
         allowedHeaders: ["Content-Type", "Authorization"]
     },
     // Enhanced WebSocket configuration for better cross-platform support
-    transports: ['polling', 'websocket'], // Start with polling, upgrade to websocket when possible
-    path: '/socket.io/', // Explicitly set the path for Socket.IO
+    transports: ['websocket', 'polling'], // Start with either method
+    path: '/socket.io', // Remove trailing slash to match client config
     connectTimeout: 45000, // Increase timeout for slow connections
     pingTimeout: 60000,      // Longer timeout for mobile devices
     pingInterval: 25000,     // More frequent pings to detect disconnections
@@ -171,7 +171,7 @@ io.on('connection', (socket) => {
             roundComplete: false,
             inVotingPhase: false, // Track if we're in the voting phase
             votes: new Map(),     // Store player votes
-            playerScores: new Map(), // Track player scores
+            playerScores: new Map(), // Track player scores,
             // New properties for prompt and style selection phases
             inPromptSelectionPhase: false,
             inStyleSelectionPhase: false,
