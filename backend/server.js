@@ -906,10 +906,19 @@ app.get('/lobby', (req, res) => {
 
 // Default route for the root page
 app.get('/', (req, res) => {
-    const indexPath = path.join(__dirname, '../out/index.html');
-    if (fs.existsSync(indexPath)) {
-        return res.sendFile(indexPath);
+    // Check for file in the standalone output directory first
+    const standaloneIndexPath = path.join(__dirname, '../.next/standalone/index.html');
+    const staticIndexPath = path.join(__dirname, '../out/index.html');
+    
+    if (fs.existsSync(standaloneIndexPath)) {
+        return res.sendFile(standaloneIndexPath);
+    } else if (fs.existsSync(staticIndexPath)) {
+        return res.sendFile(staticIndexPath);
     } else {
+        console.log('Index file not found. Checked paths:', {
+            standalone: standaloneIndexPath,
+            static: staticIndexPath
+        });
         return res.send('Welcome to Masquerade Game!');
     }
 });
