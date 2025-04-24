@@ -799,7 +799,99 @@ function displayNetworkInterfaces() {
     console.log('');
 }
 
-const PORT = process.env.PORT || 3001;
+// Get port from environment variable, fallback to 3001
+const PORT = process.env.SERVER_PORT || process.env.PORT || 3001;
+
+// Detect if we're running in the container environment
+const isContainer = process.env.SERVER_PORT === '443' || process.env.CONTAINER_ENV === 'true';
+console.log(`Running in ${isContainer ? 'container' : 'local'} environment on port ${PORT}`);
+
+// Initialize directories if they don't exist (important for container environment)
+try {
+  // In container environment, we need to handle paths differently
+  const frontendPath = isContainer 
+    ? path.join(__dirname, '../.next/standalone') // Path for standalone Next.js output in container
+    : path.join(__dirname, '../out');            // Path for local development output
+  
+  const publicPath = path.join(__dirname, '../public');
+  
+  console.log('Using frontend path:', frontendPath);
+  console.log('Using public path:', publicPath);
+  
+  if (!fs.existsSync(frontendPath)) {
+    try {
+      fs.mkdirSync(frontendPath, { recursive: true });
+      console.log('Created output directory:', frontendPath);
+    } catch (err) {
+      console.warn('Warning: Could not create frontend directory:', err.message);
+    }
+  }
+  
+  // Ensure the public directory exists in the standalone output
+  const standalonePublicPath = path.join(frontendPath, 'public');
+  if (!fs.existsSync(standalonePublicPath) && fs.existsSync(publicPath)) {
+    try {
+      fs.mkdirSync(standalonePublicPath, { recursive: true });
+      console.log('Created standalone public directory:', standalonePublicPath);
+      
+      // Copy public files to standalone directory
+      const publicFiles = fs.readdirSync(publicPath);
+      if (publicFiles.length > 0) {
+        console.log('Copying public files to standalone directory...');
+        publicFiles.forEach(file => {
+          const sourcePath = path.join(publicPath, file);
+          const destPath = path.join(standalonePublicPath, file);
+          try {
+            if (fs.statSync(sourcePath).isDirectory()) {
+              copyDir(sourcePath, destPath);
+            } else {
+              fs.copyFileSync(sourcePath, destPath);
+            }
+          } catch (err) {
+            console.warn(`Warning: Could not copy file ${file}:`, err.message);
+          }
+        });
+        console.log('Public files copied successfully');
+      }
+    } catch (err) {
+      console.warn('Warning: Could not set up standalone public directory:', err.message);
+    }
+  }
+  
+  // Serve static files with proper error handling
+  if (fs.existsSync(frontendPath)) {
+    app.use(express.static(frontendPath, {
+      fallthrough: true,
+      setHeaders: (res) => {
+        res.setHeader('Cache-Control', 'public, max-age=3600');
+      }
+    }));
+    console.log('Serving static files from:', frontendPath);
+  } else {
+    console.warn('Warning: Frontend path does not exist:', frontendPath);
+  }
+  
+  // Serve from public as fallback
+  if (fs.existsSync(publicPath)) {
+    app.use(express.static(publicPath, { 
+      fallthrough: true 
+    }));
+    console.log('Serving public files from:', publicPath);
+  } else {
+    console.warn('Warning: Public path does not exist:', publicPath);
+  }
+  
+  // Serve from standalone public as another fallback
+  if (fs.existsSync(standalonePublicPath)) {
+    app.use(express.static(standalonePublicPath, { 
+      fallthrough: true 
+    }));
+    console.log('Serving standalone public files from:', standalonePublicPath);
+  }
+  
+} catch (err) {
+  console.warn('Warning: Error handling static directories:', err.message);
+}
 
 // Remove the catch-all route and replace with specific routes
 // Handle requests for the lobby page
