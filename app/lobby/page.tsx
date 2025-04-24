@@ -101,8 +101,14 @@ function LobbyContent() {
             // This allows connections from other devices on the same network
             const currentHost = window.location.hostname;
             
-            // Use the domain name for production, current hostname for development
-            const socketUrl = `http://${currentHost}:3001`;
+            // Support connecting to the external IP when needed
+            // Use the domain name for production, current hostname for development,
+            // or the provided external IP if users need to connect from outside your network
+            const socketUrl = currentHost === 'localhost' || /\d+\.\d+\.\d+\.\d+/.test(currentHost)
+                ? `http://${currentHost}:3001`  // Local development or IP address
+                : `http://23.251.99.66:3001`;   // External IP for remote access
+            
+            console.log(`Using Socket.IO server URL: ${socketUrl}`);
             
             // Detect device type for specific configurations
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;

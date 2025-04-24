@@ -720,6 +720,15 @@ function displayNetworkInterfaces() {
             }
         });
     }
+    
+    // Manually add external IP information
+    // Hide.me VPN external IP won't show up in network interfaces
+    console.log('\nExternal IP Address (Hide.me VPN):');
+    console.log('-----------------------------');
+    console.log(`http://23.251.99.66:${PORT}`);
+    console.log('-----------------------------');
+    console.log('Share this address with others to connect to your game.');
+    console.log('Dynamic port forwarding is enabled via the Hide.me app.');
     console.log('');
 }
 
