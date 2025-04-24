@@ -8,7 +8,7 @@ export default function Home() {
   const { playLobby } = useAudio();
 
   useEffect(() => {
-    playLobby();               // will succeed after the first click/tap
+    playLobby();
   }, [playLobby]);
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
