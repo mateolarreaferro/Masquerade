@@ -10,6 +10,12 @@ const nextConfig = {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
   },
+  // Add basePath if your app is not hosted at the root
+  basePath: '',
+  // Make sure trailing slashes are consistent
+  trailingSlash: true,
+  // Disable asset prefix in development
+  assetPrefix: process.env.NODE_ENV === 'production' ? undefined : '',
 };
 
 module.exports = nextConfig;

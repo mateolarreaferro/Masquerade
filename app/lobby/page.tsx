@@ -97,16 +97,17 @@ function LobbyContent() {
         if (!socketInstance) {
             console.log("Creating new socket instance");
             
-            // Get the current hostname and use it for development connections
-            // This allows connections from other devices on the same network
+            // Set up socket connection based on environment
+            // In production, use the reverse proxy domain, otherwise use local development config
+            const isProd = window.location.hostname === 'games.gabema.ga';
             const currentHost = window.location.hostname;
             
-            // Support connecting to the external IP when needed
-            // Use the domain name for production, current hostname for development,
-            // or the provided external IP if users need to connect from outside your network
-            const socketUrl = currentHost === 'localhost' || /\d+\.\d+\.\d+\.\d+/.test(currentHost)
-                ? `http://${currentHost}:3001`  // Local development or IP address
-                : `http://23.251.99.66:3001`;   // External IP for remote access
+            // Configure socket URL based on environment
+            const socketUrl = isProd 
+                ? `https://games.gabema.ga`  // Production with reverse proxy (no port needed)
+                : currentHost === 'localhost' || /\d+\.\d+\.\d+\.\d+/.test(currentHost)
+                    ? `http://${currentHost}:3001`  // Local development
+                    : `https://games.gabema.ga`;    // Default to production
             
             console.log(`Using Socket.IO server URL: ${socketUrl}`);
             
