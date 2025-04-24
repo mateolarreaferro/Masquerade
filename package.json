@@ -5,8 +5,8 @@
   "scripts": {
     "install:backend": "cd backend && npm install",
     "dev": "concurrently \"npm run backend:start\" \"next dev\"",
-    "build": "next build && cp -r public/* .next/standalone/public/ && npm run install:backend",
-    "start": "NODE_ENV=production node backend/server.js",
+    "build": "next build && npm run install:backend",
+    "start": "NODE_ENV=production node start.js",
     "start:dev": "next build && node backend/server.js",
     "dev:front": "next dev",
     "dev:back": "node backend/server.js",
