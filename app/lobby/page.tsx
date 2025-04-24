@@ -102,10 +102,7 @@ function LobbyContent() {
             const currentHost = window.location.hostname;
             
             // Use the domain name for production, current hostname for development
-            // Using port 80 (standard HTTP port) which should pass through most firewalls
-            const socketUrl = process.env.NODE_ENV === 'production' 
-                ? 'https://games.gabema.ga' 
-                : `http://${currentHost}:3000`;
+            const socketUrl = `http://${currentHost}:3001`;
             
             // Detect device type for specific configurations
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;

@@ -40,6 +40,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Serve static files from the Next.js output directory and public folder
+const frontendPath = path.join(__dirname, '../out'); // Changed from ../next to ../out for static export
+app.use(express.static(frontendPath));
+app.use(express.static(path.join(__dirname, '../public')));
+
 // Add route for health check and to verify server is running
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'Server is running' });
@@ -716,6 +721,38 @@ function displayNetworkInterfaces() {
 }
 
 const PORT = process.env.PORT || 3001;
+
+// Remove the catch-all route and replace with specific routes
+// Handle requests for the lobby page
+app.get('/lobby', (req, res) => {
+    const lobbyPath = path.join(__dirname, '../out/lobby.html');
+    if (fs.existsSync(lobbyPath)) {
+        return res.sendFile(lobbyPath);
+    } else {
+        return res.sendFile(path.join(__dirname, '../out/index.html'));
+    }
+});
+
+// Default route for the root page
+app.get('/', (req, res) => {
+    const indexPath = path.join(__dirname, '../out/index.html');
+    if (fs.existsSync(indexPath)) {
+        return res.sendFile(indexPath);
+    } else {
+        return res.send('Welcome to Masquerade Game!');
+    }
+});
+
+// 404 route for everything else
+app.use((req, res) => {
+    const path404 = path.join(__dirname, '../out/404.html');
+    if (fs.existsSync(path404)) {
+        return res.status(404).sendFile(path404);
+    } else {
+        return res.status(404).send('Page not found');
+    }
+});
+
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
     console.log(`Access locally via: http://localhost:${PORT}`);
