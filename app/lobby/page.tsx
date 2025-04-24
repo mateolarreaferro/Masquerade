@@ -1367,7 +1367,7 @@ function LobbyContent() {
 
       <main className="px-4 sm:px-8 flex items-start justify-center">
         <div className="w-full max-w-xl">
-          <h1 className="font-freakshow text-6xl font-bold dark:text-indigo-200 text-center mt-2">
+          <h1 className="font-freakshow text-6xl font-bold dark:text-indigo-200 text-center mt-2 mb-8">
             {mode === "create" ? "Create a New Lobby" : "Join Existing Lobby"}
           </h1>
 
