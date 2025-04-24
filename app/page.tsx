@@ -1,25 +1,15 @@
 'use client';
-import { useEffect } from 'react'; 
-import useSound from 'use-sound'; 
+import { useEffect } from 'react';
+import { useAudio } from './components/AudioProvider';   // exact same path
 import SoundLink from './components/SoundLink';
-import Image from "next/image";
+import Image from 'next/image';
 
 export default function Home() {
-  // Add these lines for lobby music
-  const [playLobbyMusic, { stop: stopLobbyMusic }] = useSound(
-    '/audio/LobbyMusic.wav',
-    {
-      loop: true, 
-      volume: 0.7, 
-    }
-  );
+  const { playLobby } = useAudio();
 
   useEffect(() => {
-    playLobbyMusic(); 
-    return () => {
-      stopLobbyMusic();
-    };
-  }, [playLobbyMusic, stopLobbyMusic]); 
+    playLobby();               // will succeed after the first click/tap
+  }, [playLobby]);
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
