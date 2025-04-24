@@ -1,4 +1,3 @@
-// app/components/BackgroundParticles.tsx
 'use client';
 
 import { useCallback } from 'react';
@@ -8,66 +7,43 @@ import type { Engine } from 'tsparticles-engine';
 
 export default function BackgroundParticles() {
   const particlesInit = useCallback(async (engine: Engine) => {
-    await loadSlim(engine);                  // lightweight preset
+    await loadSlim(engine);
   }, []);
 
   return (
-    /*  z-50 keeps the canvas above every UI element, pointer-events-none
-        makes it completely “click-through”                                    */
-    <div className="fixed inset-0 z-50 pointer-events-none">
+    <div className="fixed inset-0 z-[2147483647] pointer-events-none">
       <Particles
         id="bg-particles"
         init={particlesInit}
         options={{
-          fullScreen: { enable: false },      // we position via the wrapper
+          fullScreen: { enable: false },
           fpsLimit: 60,
           background: { color: { value: 'transparent' } },
-
-          /* ---------- particle appearance ---------- */
           particles: {
-            number: {
-              value: 120,
-              density: { enable: true, area: 1000 },
-            },
-
-            color: { value: ['#6366f1', '#8b5cf6', '#06b6d4'] }, // indigo → cyan
-            shape: { type: ['circle', 'triangle'] },             // circles + triangles
-
-            opacity: {
-              value: 0.45,
-              animation: { enable: false },
-            },
-
-            size: {
-              value: { min: 2, max: 5 },
-              animation: { enable: false },
-            },
-
+            number: { value: 120, density: { enable: true, area: 900 } },
+            color: { value: ['#6366f1', '#8b5cf6', '#06b6d4'] },
+            shape: { type: ['circle', 'triangle'] },
+            opacity: { value: 0.35 },
+            size: { value: { min: 3, max: 7 } },
             move: {
               enable: true,
-              speed: 0.35,                 // smooth, slow drift
+              speed: 0.25,
               random: true,
               straight: false,
               direction: 'none',
-              outModes: { default: 'out' }, // fade out when leaving viewport
+              outModes: { default: 'out' },
             },
-
-            links: { enable: false },       // no connecting lines
-            rotate: { animation: { enable: false } }, // static orientation
-            wobble: { enable: false },      // no wobble
+            links: { enable: false },
+            rotate: { animation: { enable: false } },
+            wobble: { enable: false },
           },
-
-          /* ---------- subtle interactivity ---------- */
           interactivity: {
             events: {
-              onHover: { enable: true, mode: 'repulse' }, // gentle push
+              onHover: { enable: true, mode: 'repulse' },
               resize: true,
             },
-            modes: {
-              repulse: { distance: 110, speed: 0.6 },
-            },
+            modes: { repulse: { distance: 120, speed: 0.6 } },
           },
-
           detectRetina: true,
         }}
       />

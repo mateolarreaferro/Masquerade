@@ -19,11 +19,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <AudioProvider>
-          <BackgroundParticles />            {/* z-40 particle layer */}
-          <div className="relative z--10">    {/* UI sits below particles */}
+          {/* UI wrapper */}
+          <div className="relative z-10">
             <MusicToggleButton />
             {children}
           </div>
+
+          {/* particles rendered last → always on top */}
+          <BackgroundParticles />
         </AudioProvider>
       </body>
     </html>
