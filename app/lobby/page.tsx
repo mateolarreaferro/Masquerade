@@ -113,23 +113,24 @@ function LobbyContent() {
             
             // Create Socket.IO instance with optimized configuration
             socketInstance = io(socketUrl, {
-                transports: ['websocket', 'polling'], // Try websocket first, then fallback to polling
+                transports: ['websocket', 'polling'],
                 forceNew: true,         // Force a new connection attempt
                 reconnection: true,
                 reconnectionAttempts: 10, // Limit reconnection attempts to prevent excessive retries
                 reconnectionDelay: 1000,
                 reconnectionDelayMax: 5000,
-                timeout: 10000,         // Shorter timeout to fail faster if connection can't be established
+                timeout: 20000,         // Longer timeout for initial connections
                 autoConnect: true,
-                path: '/socket.io',
-                withCredentials: true,  // Try with credentials enabled
+                path: '/socket.io/',    // Explicitly include trailing slash to match server config
+                withCredentials: false, // Set to false to avoid CORS preflight issues
                 
                 // Set explicit polling configuration to fix XHR errors
                 transportOptions: {
                     polling: {
                         extraHeaders: {
-                            'Cache-Control': 'no-cache',
+                            'Cache-Control': 'no-cache, no-store',
                             'Pragma': 'no-cache',
+                            'Expires': '0',
                             'If-None-Match': 'no-match'
                         }
                     }

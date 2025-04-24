@@ -14,6 +14,40 @@ const server = http.createServer(app);
 const compression = require('compression');
 app.use(compression());
 
+// Socket.IO setup - initialize before middleware for proper path handling
+const io = new Server(server, {
+    cors: {
+        origin: "*", // Allows connections from any origin, including local IPs
+        methods: ["GET", "POST", "OPTIONS"],
+        credentials: true,
+        allowedHeaders: ["Content-Type", "Authorization"]
+    },
+    // Enhanced WebSocket configuration for better cross-platform support
+    transports: ['polling', 'websocket'], // Start with polling, upgrade to websocket when possible
+    path: '/socket.io/', // Explicitly set the path for Socket.IO
+    connectTimeout: 45000, // Increase timeout for slow connections
+    pingTimeout: 60000,      // Longer timeout for mobile devices
+    pingInterval: 25000,     // More frequent pings to detect disconnections
+    upgradeTimeout: 30000,   // Longer timeout for upgrading to WebSockets
+    maxHttpBufferSize: 1e8,  // 100MB
+    allowUpgrades: true,     // Enable upgrades to WebSocket
+    perMessageDeflate: {     // Configure compression better
+        threshold: 32 * 1024, // Only compress data if message is larger than 32KB
+        zlibDeflateOptions: {
+            chunkSize: 1024,
+            memLevel: 7,
+            level: 3
+        },
+        zlibInflateOptions: {
+            chunkSize: 10 * 1024
+        }
+    },
+    httpCompression: {
+        threshold: 1024      // Compress HTTP requests larger than 1KB
+    },
+    allowEIO3: true,         // Allow clients using older versions of engine.io
+});
+
 // Add more robust CORS middleware to handle preflight requests for Socket.IO
 app.use((req, res, next) => {
   // Allow requests from any origin (in production, restrict this)
@@ -57,37 +91,6 @@ app.get('/ping', (req, res) => {
     timestamp: Date.now(),
     clientInfo: req.headers['user-agent'] 
   });
-});
-
-const io = new Server(server, {
-    cors: {
-        origin: "*", // Allows connections from any origin, including local IPs
-        methods: ["GET", "POST", "OPTIONS"],
-        credentials: true,
-        allowedHeaders: ["Content-Type", "Authorization"]
-    },
-    // Enhanced WebSocket configuration for better cross-platform support
-    transports: ['polling', 'websocket'], // Start with polling, upgrade to websocket when possible
-    pingTimeout: 60000,      // Longer timeout for mobile devices
-    pingInterval: 25000,     // More frequent pings to detect disconnections
-    upgradeTimeout: 30000,   // Longer timeout for upgrading to WebSockets
-    maxHttpBufferSize: 1e8,  // 100MB
-    allowUpgrades: true,     // Enable upgrades to WebSocket
-    perMessageDeflate: {     // Configure compression better
-        threshold: 32 * 1024, // Only compress data if message is larger than 32KB
-        zlibDeflateOptions: {
-            chunkSize: 1024,
-            memLevel: 7,
-            level: 3
-        },
-        zlibInflateOptions: {
-            chunkSize: 10 * 1024
-        }
-    },
-    httpCompression: {
-        threshold: 1024      // Compress HTTP requests larger than 1KB
-    },
-    allowEIO3: true,         // Allow clients using older versions of engine.io
 });
 
 // Cache prompts and answer styles in memory
