@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone', // Change from 'export' to 'standalone' for better server-side usage
-  distDir: '.next',    // Use the default Next.js output directory
+  output: 'export', // Changed to 'export' for static file generation
+  distDir: 'out',   // Set output directory to 'out' to match server expectations
   // Performance optimizations
   reactStrictMode: true,
   images: {

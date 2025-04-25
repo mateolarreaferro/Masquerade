@@ -75,7 +75,7 @@ app.use((req, res, next) => {
 });
 
 // Serve static files from the Next.js output directory and public folder
-const frontendPath = path.join(__dirname, '../out'); // Changed from ../next to ../out for static export
+const frontendPath = path.join(__dirname, '../out'); // Static export output directory
 const publicPath = path.join(__dirname, '../public');
 
 // Initialize directories if they don't exist (important for container environment)
@@ -113,22 +113,24 @@ try {
 // Helper function to copy directories recursively
 function copyDir(src, dest) {
   try {
+    if (!fs.existsSync(dest)) {
+      fs.mkdirSync(dest, { recursive: true });
+    }
+    
     const entries = fs.readdirSync(src);
     entries.forEach(entry => {
       const srcPath = path.join(src, entry);
       const destPath = path.join(dest, entry);
       
       if (fs.statSync(srcPath).isDirectory()) {
-        if (!fs.existsSync(destPath)) {
-          fs.mkdirSync(destPath, { recursive: true });
-        }
-        copyDir(srcPath, destPath);
+        copyDir(srcPath, destPath); // Recursively copy subdirectories
       } else {
         fs.copyFileSync(srcPath, destPath);
       }
     });
+    console.log(`Copied directory: ${src} to ${dest}`);
   } catch (err) {
-    console.error('Error copying directory:', err);
+    console.error(`Error copying directory ${src} to ${dest}:`, err);
   }
 }
 
@@ -787,16 +789,6 @@ function displayNetworkInterfaces() {
             }
         });
     }
-    
-    // Manually add external IP information
-    // Hide.me VPN external IP won't show up in network interfaces
-    console.log('\nExternal IP Address (Hide.me VPN):');
-    console.log('-----------------------------');
-    console.log(`http://23.251.99.66:${PORT}`);
-    console.log('-----------------------------');
-    console.log('Share this address with others to connect to your game.');
-    console.log('Dynamic port forwarding is enabled via the Hide.me app.');
-    console.log('');
 }
 
 // Get port from environment variable, fallback to 3001

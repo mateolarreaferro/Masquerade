@@ -5,16 +5,19 @@
   "scripts": {
     "install:backend": "cd backend && npm install",
     "dev": "concurrently \"npm run backend:start\" \"next dev\"",
-    "build": "next build && npm run install:backend",
-    "start": "NODE_ENV=production node start.js",
-    "start:dev": "next build && node backend/server.js",
+    "build": "next build && node copy-assets.js && npm run install:backend",
+    "start": "node backend/server.js",
     "dev:front": "next dev",
     "dev:back": "node backend/server.js",
     "lint": "next lint",
     "backend:start": "cd backend && node server.js",
-    "dev:all": "concurrently \"npm run backend:start\" \"npm run dev\""
+    "dev:all": "concurrently \"npm run backend:start\" \"npm run dev\"",
+    "copy-assets": "node copy-assets.js"
   },
   "dependencies": {
+    "@tsparticles/engine": "^3.8.1",
+    "@tsparticles/react": "^3.0.0",
+    "@tsparticles/slim": "^3.8.1",
     "compression": "^1.8.0",
     "concurrently": "^8.2.2",
     "howler": "^2.2.4",
@@ -22,10 +25,7 @@
     "next": "15.3.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-tsparticles": "^2.12.2",
     "socket.io-client": "^4.8.1",
-    "tsparticles": "^3.8.1",
-    "tsparticles-slim": "^2.12.0",
     "use-sound": "^5.0.0"
   },
   "devDependencies": {
